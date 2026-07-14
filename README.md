@@ -50,6 +50,25 @@ npm run db:migrate    # apply pending migrations (src/db/migrate.ts)
 
 Commit both the generated SQL and the `drizzle/meta/` journal.
 
+`pg_trgm` is required (enabled via migration + `docker/postgres/init/00_extensions.sql`) for the fuzzy-search GIN index on `products.name`.
+
+## Products API
+
+Products are shared across all users (no per-user filtering) — the library and its nutrition facts are a common good, not personal data. Archiving is a soft-delete (`archived_at`); products are never hard-deleted.
+
+| Method | Route | Notes |
+|---|---|---|
+| GET | `/api/products?q=&filter=` | Fuzzy search on `name` via `pg_trgm`. `filter`: `all` \| `manual` \| `image` \| `ingested` \| `unverified` |
+| POST | `/api/products` | Create |
+| PATCH | `/api/products/:id` | Partial update |
+| POST | `/api/products/:id/archive` | Soft-delete |
+
+All routes require auth (same Cloudflare Access / dev-bypass flow as above). Requests and responses follow the app-wide `{ data }` / `{ error: { code, message } }` shape (`src/lib/api-response.ts`).
+
+Validation (`src/lib/products/schema.ts`, Zod): all macros must be `>= 0`. A product's macros are also checked against its stated `kcalPer100g` (`4*protein + 4*carbs + 9*fat`) — a mismatch over 15% does **not** block the write, it returns `warning: "kcal_mismatch"` alongside the saved product so the caller can flag it for review instead of losing the data.
+
+**Known gap:** seed data for ~100 common Israeli staples (spec §11.3's bootstrapping suggestion) is deferred — no nutrition data source has been chosen yet.
+
 ## Environment variables
 
 See `.env.example` for the full list. Notes:
