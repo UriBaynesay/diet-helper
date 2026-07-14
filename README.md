@@ -84,7 +84,24 @@ Macros are snapshotted at log time onto the entry itself (`kcal`/`proteinG`/`car
 
 Recipe-based entries aren't supported yet — `recipes` doesn't exist until phase 5. The schema already has a `CHECK` requiring exactly one of `product_id` / `recipe_id` and a nullable `recipe_id` column (no FK yet), but the API only accepts `productId` for now.
 
-`GET /api/diary` returns `target: null` — there's no `goals` table until phase 4, so this phase only reports consumption, matching the spec's own no-goal fallback.
+`GET /api/diary` returns a `target` (kcal/protein/carbs/fat) sourced from the goal active on the viewed date, or `null` if none exists yet — see Goals below.
+
+## Profile, BMI & Goals API
+
+`weight_logs` and `goals` are private per user, like `diary_entries`.
+
+- `weight_logs` is unique on `(user_id, logged_on)` — logging a second weight the same day **updates** that day's entry rather than creating a duplicate.
+- `goals` is **append-only**: rows are never updated or deleted. The goal active for a given date is the row with the greatest `effective_from <= that date` (`src/lib/goals/active-goal.ts`, shared by `GET /api/goals` and `GET /api/diary`). Saving a new goal never changes what target was active on a past date — verified via curl: saved a goal effective 2026-07-14, then a second one effective 2026-08-01, and confirmed `GET /api/diary?date=2026-07-14` still returned the *first* goal's target unchanged while `date=2026-08-15` returned the second.
+
+| Method | Route | Notes |
+|---|---|---|
+| GET | `/api/profile` | Current profile + latest weight log |
+| POST | `/api/profile` | Update `sex`/`birthDate`/`heightCm`/`activityLevel`/`notificationsEnabled`; optionally log/upsert today's (or `loggedOn`'s) weight via `weightKg` |
+| GET | `/api/bmi?goalType=lose\|maintain\|gain` | BMI, BMR (Mifflin-St Jeor), TDEE, calorie target (goal-adjusted, floored at 1200 kcal), suggested macro split. Requires `sex`/`birthDate`/`heightCm`/`activityLevel` set and at least one weight log — 400 otherwise |
+| GET | `/api/goals?date=` | The active goal for that date (default today), or `null` |
+| POST | `/api/goals` | Append a new goal row (never updates an existing one) |
+
+All BMI/BMR/TDEE/macro-split math is in `src/lib/profile/calculations.ts` as pure, unit-tested functions (`npm test`) — no DB access, so they're cheap to verify against the spec's own formulas directly. The BMI disclaimer text lives in `strings.bmi.disclaimer` (`src/lib/strings.ts`) and is returned in the `GET /api/bmi` response.
 
 ## Environment variables
 
@@ -100,6 +117,14 @@ docker compose up
 ```
 
 Starts `postgres`, `app` (migrates on boot, then serves), and `cloudflared` (requires a real `CLOUDFLARE_TUNNEL_TOKEN` — without one it will fail to connect, which is expected until a tunnel is provisioned in the Cloudflare dashboard).
+
+## Tests
+
+```bash
+npm test   # vitest run
+```
+
+Unit tests cover the pure calculation functions only (macro math, BMI/BMR/TDEE, sanity checks) — no DB/UI tests in v1. See the `unit-testing` skill for conventions. Tests must pass before merging a branch into `main`.
 
 ## RTL conventions
 
