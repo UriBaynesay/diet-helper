@@ -69,6 +69,23 @@ Validation (`src/lib/products/schema.ts`, Zod): all macros must be `>= 0`. A pro
 
 **Known gap:** seed data for ~100 common Israeli staples (spec §11.3's bootstrapping suggestion) is deferred — no nutrition data source has been chosen yet.
 
+## Diary API
+
+`diary_entries` is private per user — scoped by the verified `user_id` from `requireUser()`, never trusted from the client — unlike products, which are shared.
+
+| Method | Route | Notes |
+|---|---|---|
+| GET | `/api/diary?date=YYYY-MM-DD` | That day's entries + summed totals for the authenticated user |
+| POST | `/api/diary` | Create: `entryDate`, `mealType`, `productId`, `quantityG` |
+| PATCH | `/api/diary/:id` | Edit `entryDate` / `mealType` / `quantityG` |
+| DELETE | `/api/diary/:id` | Remove |
+
+Macros are snapshotted at log time onto the entry itself (`kcal`/`proteinG`/`carbsG`/`fatG`) — editing a product's nutrition later does **not** retroactively change existing diary entries. Only an explicit `PATCH` to `quantityG` recomputes macros, and it uses the product's *current* values at the time of that edit.
+
+Recipe-based entries aren't supported yet — `recipes` doesn't exist until phase 5. The schema already has a `CHECK` requiring exactly one of `product_id` / `recipe_id` and a nullable `recipe_id` column (no FK yet), but the API only accepts `productId` for now.
+
+`GET /api/diary` returns `target: null` — there's no `goals` table until phase 4, so this phase only reports consumption, matching the spec's own no-goal fallback.
+
 ## Environment variables
 
 See `.env.example` for the full list. Notes:
