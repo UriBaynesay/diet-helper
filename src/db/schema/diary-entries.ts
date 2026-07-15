@@ -2,6 +2,7 @@ import { pgTable, uuid, date, numeric, timestamp, pgEnum, check, index } from "d
 import { sql } from "drizzle-orm";
 import { users } from "./users";
 import { products } from "./products";
+import { recipes } from "./recipes";
 
 export const mealTypeEnum = pgEnum("meal_type", ["breakfast", "lunch", "dinner", "snack"]);
 
@@ -15,8 +16,7 @@ export const diaryEntries = pgTable(
     entryDate: date("entry_date", { mode: "date" }).notNull(),
     mealType: mealTypeEnum("meal_type").notNull(),
     productId: uuid("product_id").references(() => products.id),
-    // recipe_id has no FK yet — the recipes table doesn't exist until phase 5.
-    recipeId: uuid("recipe_id"),
+    recipeId: uuid("recipe_id").references(() => recipes.id),
     quantityG: numeric("quantity_g"),
     servings: numeric("servings"),
     // Denormalised snapshot at log time (spec FR-1): a later edit to the
