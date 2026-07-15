@@ -10,7 +10,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=.env src/db/migrate.ts",
-    "db:seed-owner": "tsx --env-file=.env scripts/seed-owner.ts"
+    "db:seed-owner": "tsx --env-file=.env scripts/seed-owner.ts",
+    "db:seed-unit-conversions": "tsx --env-file=.env scripts/seed-unit-conversions.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",

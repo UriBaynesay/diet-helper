@@ -31,4 +31,7 @@ export const env = {
   get ANTHROPIC_API_KEY() {
     return required("ANTHROPIC_API_KEY");
   },
+  get SPOONACULAR_API_KEY() {
+    return required("SPOONACULAR_API_KEY");
+  },
 };

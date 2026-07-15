@@ -57,6 +57,13 @@
       "when": 1784146571765,
       "tag": "0007_naive_piledriver",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784148375681,
+      "tag": "0008_bright_matthew_murdock",
+      "breakpoints": true
     }
   ]
 }
