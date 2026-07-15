@@ -120,12 +120,31 @@ Macros are snapshotted at log time onto the entry itself (`kcal`/`proteinG`/`car
 
 All BMI/BMR/TDEE/macro-split math is in `src/lib/profile/calculations.ts` as pure, unit-tested functions (`npm test`) — no DB access, so they're cheap to verify against the spec's own formulas directly. The BMI disclaimer text lives in `strings.bmi.disclaimer` (`src/lib/strings.ts`) and is returned in the `GET /api/bmi` response.
 
+## Daily Summary Email
+
+`notification_logs` is private per user — one row per `(user, type, covers_date)`, used for idempotency and catch-up.
+
+| Method | Route | Notes |
+|---|---|---|
+| POST | `/api/cron/daily-summary` | Sends each eligible user their daily progress email |
+
+Guarded the same way as `/api/cron/ping` — `X-Cron-Secret` + rejection of any Cloudflare forwarding header (`src/lib/cron/guard.ts`), **not** Cloudflare Access. Iterates every user with `is_allowed = true AND notifications_enabled = true` (a user failing either check is excluded from the query entirely, not merely skipped).
+
+For each eligible user, "today" is resolved in *that user's* `timezone` via `Intl.DateTimeFormat` (`src/lib/notifications/timezone.ts`) — never the container's UTC clock — then the route attempts today's summary and, separately, yesterday's (**catch-up**, in case the PC was asleep at the scheduled time; never further back than one day). Each attempt is idempotent: `send-daily-summary.ts` checks `notification_logs` for an existing `status = 'sent'` row for that user/date first, and skips cleanly (no email, no duplicate log) if already sent, if the day has zero diary entries, or if there's no active goal for that date.
+
+Email is sent via Nodemailer over Gmail SMTP (`smtp.gmail.com:587`, STARTTLS) using `GMAIL_USER`/`GMAIL_APP_PASSWORD` — a real **Gmail App Password**, which requires 2-Step Verification enabled on the account. Subject and verdict copy are pure, tested functions (`src/lib/notifications/summary.ts`) matching the spec's own worked examples exactly.
+
+**RTL email gotcha found during testing:** `dir="rtl"` on `<html>`/`<body>` alone is not enough for Gmail — every text-bearing table cell needs its own explicit `dir="rtl"` attribute, and numeric "consumed / target unit" pairs need to be wrapped in `dir="ltr"` spans or the numbers render reversed (same rule the spec gives for the app UI, extended here to email). The template (`src/lib/notifications/template.ts`) was iterated once on real visual feedback into a rounded card with a circular kcal-percent indicator, per-macro progress bars, and a pill CTA button — verified by actually receiving and reading real test emails in Gmail, including the catch-up variant's amber "sent late" banner.
+
+Verified via curl + live email delivery: calling the endpoint twice for the same day sent exactly one email (one `notification_logs` row); a diary entry logged for yesterday plus a backdated goal triggered a real catch-up email labeled for the correct date; `notifications_enabled = false` excludes the user with an empty result and no email; missing/wrong `X-Cron-Secret` both 401; a day with zero diary entries is skipped with no email sent.
+
 ## Environment variables
 
 See `.env.example` for the full list. Notes:
 - `DATABASE_URL` in `.env` is for host-side tooling (`npm run dev`, `db:migrate`, seed script). Inside `docker-compose.yml`, the `app` service overrides this to point at the `postgres` service hostname instead of `localhost`.
 - `CRON_SECRET` guards `/api/cron/*` routes — these are excluded from Cloudflare Access verification entirely (an OS scheduler calls them locally with no JWT) and are protected by this shared secret instead. The guard (`src/lib/cron/guard.ts`) also rejects any request carrying Cloudflare forwarding headers, so these routes can't be reached through the tunnel even with the correct secret.
 - `OWNER_EMAIL` is only read by `scripts/seed-owner.ts`, never by the app itself.
+- `GMAIL_USER`/`GMAIL_APP_PASSWORD` (a Gmail App Password, not the account password — requires 2-Step Verification) and `APP_URL` (used for the "open the app" link in the daily summary email) are required at runtime by `src/lib/env.ts` once the notifications cron route is hit.
 
 ## Running the full stack
 

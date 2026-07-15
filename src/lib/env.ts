@@ -19,4 +19,13 @@ export const env = {
   get CRON_SECRET() {
     return required("CRON_SECRET");
   },
+  get GMAIL_USER() {
+    return required("GMAIL_USER");
+  },
+  get GMAIL_APP_PASSWORD() {
+    return required("GMAIL_APP_PASSWORD");
+  },
+  get APP_URL() {
+    return required("APP_URL");
+  },
 };
