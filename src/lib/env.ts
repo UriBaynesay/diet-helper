@@ -28,4 +28,7 @@ export const env = {
   get APP_URL() {
     return required("APP_URL");
   },
+  get ANTHROPIC_API_KEY() {
+    return required("ANTHROPIC_API_KEY");
+  },
 };
