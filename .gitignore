@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local uploaded label images (FR-3 image extraction)
+/data/uploads
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

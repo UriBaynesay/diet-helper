@@ -15,6 +15,10 @@ export const productInputSchema = z.object({
   fiberPer100g: nonNegative.nullish(),
   sugarPer100g: nonNegative.nullish(),
   sodiumMgPer100g: nonNegative.nullish(),
+  // Set only when this product is being saved from a reviewed, human-confirmed
+  // extraction job (spec FR-3) — never trust a job's parsed values without
+  // this explicit confirmation step.
+  extractionJobId: z.uuid().nullish(),
 });
 
 export type ProductInput = z.infer<typeof productInputSchema>;

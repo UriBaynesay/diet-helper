@@ -69,6 +69,24 @@ Validation (`src/lib/products/schema.ts`, Zod): all macros must be `>= 0`. A pro
 
 **Known gap:** seed data for ~100 common Israeli staples (spec §11.3's bootstrapping suggestion) is deferred — no nutrition data source has been chosen yet.
 
+## Image Extraction API
+
+`extraction_jobs` is private per user — `status` (`pending`/`processing`/`succeeded`/`failed`), `raw_response`/`parsed` as jsonb, `confidence`, `error`, and a nullable `product_id` set once a job is confirmed and saved as a product.
+
+| Method | Route | Notes |
+|---|---|---|
+| POST | `/api/products/extract` | Upload a label photo (multipart `image` field; jpeg/png/webp/heic, ≤10MB) → creates and processes an extraction job |
+| GET | `/api/products/extract/:jobId` | Poll job status/result |
+| POST | `/api/products/extract/:jobId/retry` | Re-runs extraction against the **already-stored** image — no re-upload |
+
+The uploaded image is downscaled server-side to 1568px on the long edge (`sharp`, `src/lib/extraction/storage.ts` — heic is converted to jpeg, since the vision API doesn't accept heic directly) and saved under `./data/uploads/{uuid}.{ext}` (gitignored). Extraction calls Claude Sonnet 5 (`model: "claude-sonnet-5"`) vision via the SDK's structured-output helper (`messages.parse` + `zodOutputFormat`) — the model returns strict JSON matching a fixed schema, never free text. Given personal-app volume, a job is processed inline rather than through a queue; the job row and polling endpoint still give callers a consistent pending → processing → succeeded/failed contract.
+
+Per-serving labels are normalized to per-100g using the label's `serving_size_g` (`src/lib/extraction/normalize.ts`, pure and unit-tested against the spec's own example: a 30g/120kcal per-serving panel becomes exactly 400 kcal/100g). If a per-serving label has no printed serving size, that's not treated as a failure — the raw per-serving values are left for the human to supply a serving size during review. The Phase 2 4/4/9 sanity check (`kcalSanityWarning`) runs against the *normalized* per-100g values; if it fails, `confidence` is force-downgraded to `low` regardless of what the model reported.
+
+**The model never writes a `products` row.** `POST /api/products/extract` only ever produces an `extraction_jobs` row. A product is created solely via the existing `POST /api/products`, now accepting an optional `extractionJobId` — this is the human-confirmed review step. That call verifies the job belongs to the caller and has `status: "succeeded"`, then sets `source: "image"` and `isVerified: true` and links `extraction_jobs.product_id` back to the new product. No review-screen UI exists yet; the confirm step *is* that `POST /api/products` call.
+
+Verified end-to-end with two real (non-mocked) Claude Sonnet 5 calls against synthetically generated label images: a per-100g label was transcribed exactly (name, brand, all macros, `confidence: "high"`, 4/4/9 check passed), and a per-serving-only label (30g/120kcal) normalized to precisely 400 kcal/100g, matching the spec's own worked example. Also verified: unsupported file type → 400, unauthenticated upload → 401, polling another user's job → 403/404, and retry re-processing the stored image without a new upload while preserving an existing `productId` link.
+
 ## Diary API
 
 `diary_entries` is private per user — scoped by the verified `user_id` from `requireUser()`, never trusted from the client — unlike products, which are shared.
@@ -145,6 +163,7 @@ See `.env.example` for the full list. Notes:
 - `CRON_SECRET` guards `/api/cron/*` routes — these are excluded from Cloudflare Access verification entirely (an OS scheduler calls them locally with no JWT) and are protected by this shared secret instead. The guard (`src/lib/cron/guard.ts`) also rejects any request carrying Cloudflare forwarding headers, so these routes can't be reached through the tunnel even with the correct secret.
 - `OWNER_EMAIL` is only read by `scripts/seed-owner.ts`, never by the app itself.
 - `GMAIL_USER`/`GMAIL_APP_PASSWORD` (a Gmail App Password, not the account password — requires 2-Step Verification) and `APP_URL` (used for the "open the app" link in the daily summary email) are required at runtime by `src/lib/env.ts` once the notifications cron route is hit.
+- `ANTHROPIC_API_KEY` is required at runtime by `src/lib/env.ts` once the image-extraction route (`/api/products/extract`) is hit.
 
 ## Running the full stack
 
