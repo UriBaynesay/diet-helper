@@ -1,9 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { diaryEntries, products } from "@/db/schema";
+import { diaryEntries, products, recipes, recipeNutrition } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
 import { requireUser, UnauthenticatedError } from "@/lib/auth/require-user";
-import { diaryEntryInputSchema } from "@/lib/diary/schema";
+import { diaryEntryInputSchema, isProductEntry } from "@/lib/diary/schema";
 import { macrosForQuantity } from "@/lib/diary/macros";
 import { findActiveGoal } from "@/lib/goals/active-goal";
 
@@ -74,14 +74,54 @@ export async function POST(request: Request) {
   }
   const input = parsed.data;
 
-  const product = await db.query.products.findFirst({
-    where: eq(products.id, input.productId),
-  });
-  if (!product || product.archivedAt) {
-    return apiError("not_found", "Product not found", 404);
+  if (isProductEntry(input)) {
+    const product = await db.query.products.findFirst({
+      where: eq(products.id, input.productId),
+    });
+    if (!product || product.archivedAt) {
+      return apiError("not_found", "Product not found", 404);
+    }
+
+    const macros = macrosForQuantity(product, input.quantityG);
+
+    const [row] = await db
+      .insert(diaryEntries)
+      .values({
+        userId: user.userId,
+        entryDate: new Date(input.entryDate),
+        mealType: input.mealType,
+        productId: input.productId,
+        quantityG: input.quantityG.toString(),
+        kcal: macros.kcal.toString(),
+        proteinG: macros.proteinG.toString(),
+        carbsG: macros.carbsG.toString(),
+        fatG: macros.fatG.toString(),
+      })
+      .returning();
+
+    return apiData({ entry: row }, { status: 201 });
   }
 
-  const macros = macrosForQuantity(product, input.quantityG);
+  const recipe = await db.query.recipes.findFirst({ where: eq(recipes.id, input.recipeId) });
+  if (!recipe || recipe.status !== "ready") {
+    return apiError("not_found", "Recipe not found or not ready", 404);
+  }
+
+  const [nutrition] = await db
+    .select()
+    .from(recipeNutrition)
+    .where(eq(recipeNutrition.recipeId, input.recipeId));
+  if (!nutrition) {
+    return apiError("not_found", "Recipe nutrition unavailable", 404);
+  }
+
+  const factor = input.servings;
+  const macros = {
+    kcal: Number(nutrition.kcalPerServing) * factor,
+    proteinG: Number(nutrition.proteinGPerServing) * factor,
+    carbsG: Number(nutrition.carbsGPerServing) * factor,
+    fatG: Number(nutrition.fatGPerServing) * factor,
+  };
 
   const [row] = await db
     .insert(diaryEntries)
@@ -89,8 +129,8 @@ export async function POST(request: Request) {
       userId: user.userId,
       entryDate: new Date(input.entryDate),
       mealType: input.mealType,
-      productId: input.productId,
-      quantityG: input.quantityG.toString(),
+      recipeId: input.recipeId,
+      servings: input.servings.toString(),
       kcal: macros.kcal.toString(),
       proteinG: macros.proteinG.toString(),
       carbsG: macros.carbsG.toString(),

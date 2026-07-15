@@ -76,15 +76,32 @@ Validation (`src/lib/products/schema.ts`, Zod): all macros must be `>= 0`. A pro
 | Method | Route | Notes |
 |---|---|---|
 | GET | `/api/diary?date=YYYY-MM-DD` | That day's entries + summed totals for the authenticated user |
-| POST | `/api/diary` | Create: `entryDate`, `mealType`, `productId`, `quantityG` |
-| PATCH | `/api/diary/:id` | Edit `entryDate` / `mealType` / `quantityG` |
+| POST | `/api/diary` | Create: either `{entryDate, mealType, productId, quantityG}` or `{entryDate, mealType, recipeId, servings}` |
+| PATCH | `/api/diary/:id` | Edit `entryDate` / `mealType` / `quantityG` (product entries only) |
 | DELETE | `/api/diary/:id` | Remove |
 
 Macros are snapshotted at log time onto the entry itself (`kcal`/`proteinG`/`carbsG`/`fatG`) — editing a product's nutrition later does **not** retroactively change existing diary entries. Only an explicit `PATCH` to `quantityG` recomputes macros, and it uses the product's *current* values at the time of that edit.
 
-Recipe-based entries aren't supported yet — `recipes` doesn't exist until phase 5. The schema already has a `CHECK` requiring exactly one of `product_id` / `recipe_id` and a nullable `recipe_id` column (no FK yet), but the API only accepts `productId` for now.
+`POST /api/diary` accepts a product entry or a recipe entry (a Zod union mirroring the DB's `CHECK` requiring exactly one of `product_id` / `recipe_id`). A recipe entry multiplies the recipe's per-serving nutrition (from the `recipe_nutrition` view) by `servings` and snapshots the result the same way a product entry does. Only `ready` recipes can be logged.
 
 `GET /api/diary` returns a `target` (kcal/protein/carbs/fat) sourced from the goal active on the viewed date, or `null` if none exists yet — see Goals below.
+
+## Recipes & Suggestions API
+
+`recipes` and `recipe_ingredients` are shared across users, like `products` — no per-user filtering. A recipe has a `status` (`draft` | `ready` | `rejected`); only `ready` recipes are loggable or suggestable. Manually-created recipes go straight to `ready` since every ingredient always has a `productId` + `quantityG` by construction — the `draft` state and the `raw_text`/`parsed_*`/`match_confidence` columns on `recipe_ingredients` exist for the ingestion pipeline (phase 8) and are unused until then.
+
+`recipe_nutrition` is a **SQL view**, not a table — sum of ingredient macros ÷ servings, derived and never stored. It's created by a raw-SQL migration (`drizzle/migrations/0005_recipe_nutrition_view.sql`) and mapped read-only into Drizzle via `.existing()` (`src/db/schema/recipe-nutrition.ts`) so drizzle-kit doesn't try to manage or recreate it.
+
+| Method | Route | Notes |
+|---|---|---|
+| GET | `/api/recipes?status=` | List, optionally filtered by status |
+| POST | `/api/recipes` | Create a recipe + its ingredients in one call |
+| GET | `/api/recipes/:id` | Recipe + ingredients + derived nutrition |
+| PATCH | `/api/recipes/:id` | Partial update; replaces the ingredient list if `ingredients` is provided |
+| DELETE | `/api/recipes/:id` | Hard delete — blocked with `409 in_use` if a diary entry references it (same "can't remove what's referenced" rule as products, enforced by the FK and caught cleanly) |
+| GET | `/api/suggestions?date=` | Top 5 ranked recipe servings for what's left of that day's target |
+
+`GET /api/suggestions` computes remaining macros (active goal − today's consumed, via the same `findActiveGoal` lookup `/api/goals` uses), scores every `ready` recipe's half/single/double-serving candidates with a deterministic weighted-deviation formula (`src/lib/suggestions/scorer.ts`, pure and unit-tested — protein weighted 2.0, kcal 1.5, carbs/fat 1.0, lower score is better), and hard-filters out anything more than 20% over remaining kcal or referencing an archived product. Verified via curl: archiving a recipe's ingredient product removes it from suggestions; logging a recipe reduces the remaining macros used by later suggestion calls; a recipe closer to the remaining macros consistently outranks a worse match at the same calorie level.
 
 ## Profile, BMI & Goals API
 
