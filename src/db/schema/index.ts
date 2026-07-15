@@ -6,3 +6,4 @@ export * from "./recipe-nutrition";
 export * from "./diary-entries";
 export * from "./weight-logs";
 export * from "./goals";
+export * from "./notification-logs";
