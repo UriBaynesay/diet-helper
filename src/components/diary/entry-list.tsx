@@ -26,8 +26,8 @@ export function EntryList({ entries, date }: { entries: DiaryDayEntry[]; date: s
                   key={entry.id}
                   className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2"
                 >
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{entry.name}</span>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-medium">{entry.name}</span>
                     <span dir="ltr" className="text-xs text-muted-foreground">
                       {entry.quantityG
                         ? `${Math.round(Number(entry.quantityG))} g`

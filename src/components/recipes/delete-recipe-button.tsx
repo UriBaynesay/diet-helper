@@ -50,7 +50,9 @@ export function DeleteRecipeButton({ recipeId }: { recipeId: string }) {
         {error && <p className="text-sm text-destructive">{error}</p>}
         <AlertDialogFooter>
           <AlertDialogCancel>{strings.common.cancel}</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete}>{strings.recipes.deleteRecipe}</AlertDialogAction>
+          <AlertDialogAction onClick={handleDelete} disabled={isPending}>
+            {strings.recipes.deleteRecipe}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

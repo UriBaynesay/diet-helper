@@ -2,8 +2,10 @@ export const strings = {
   common: {
     appName: "יומן תזונה",
     save: "שמירה",
+    saving: "שומר...",
     cancel: "ביטול",
     loading: "טוען...",
+    genericError: "משהו השתבש. נסו שוב.",
   },
   auth: {
     unauthorized: "יש להתחבר כדי להמשיך",
@@ -165,6 +167,7 @@ export const strings = {
     deleteConfirmTitle: "מחיקת מתכון?",
     deleteConfirmBody: "פעולה זו סופית ואינה ניתנת לביטול. אם המתכון נרשם ביומן, המחיקה תיחסם.",
     deleteBlocked: "לא ניתן למחוק — המתכון נרשם ביומן של משתמש.",
+    productNotFoundError: "אחד המוצרים שנבחרו לא נמצא — ייתכן שהועבר לארכיון. יש לבחור מוצר אחר.",
     nutritionTitle: "ערכים תזונתיים למנה",
     perServing: "למנה אחת",
     servingsCount: "מנות",

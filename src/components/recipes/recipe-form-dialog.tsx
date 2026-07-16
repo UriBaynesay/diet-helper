@@ -174,7 +174,11 @@ export function RecipeFormDialog({
       });
       if (!res.ok) {
         const { error: err } = await res.json();
-        setError(err?.message ?? "error");
+        setError(
+          err?.code === "not_found"
+            ? strings.recipes.productNotFoundError
+            : strings.common.genericError
+        );
         return;
       }
       setOpen(false);
@@ -350,7 +354,7 @@ export function RecipeFormDialog({
               onClick={handleSubmit}
               disabled={!values.name.trim() || !hasValidIngredient || isPending}
             >
-              {strings.recipes.submit}
+              {isPending ? strings.common.saving : strings.recipes.submit}
             </Button>
           </DialogFooter>
         )}

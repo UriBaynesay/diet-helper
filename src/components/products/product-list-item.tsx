@@ -43,8 +43,8 @@ export function ProductListItem({ product }: { product: Product }) {
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border p-3">
       <div className="flex min-w-0 flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate font-medium">{product.name}</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 truncate font-medium">{product.name}</span>
           <Badge variant={product.isVerified ? "default" : "secondary"}>
             {product.isVerified ? strings.products.verified : strings.products.unverified}
           </Badge>

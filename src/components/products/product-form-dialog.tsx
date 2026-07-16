@@ -78,6 +78,7 @@ export function ProductFormDialog({
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<ProductFormValues>(initialValues ?? EMPTY_VALUES);
   const [warning, setWarning] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function set<K extends keyof ProductFormValues>(key: K, value: string) {
@@ -88,12 +89,16 @@ export function ProductFormDialog({
     if (!values.name.trim()) return;
 
     startTransition(async () => {
+      setError(null);
       const res = await fetch(productId ? `/api/products/${productId}` : "/api/products", {
         method: productId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(toPayload(values)),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setError(strings.common.genericError);
+        return;
+      }
       const { data } = await res.json();
       // The save always succeeds even when a warning comes back (the API
       // never blocks on the 4/4/9 sanity check) — router.refresh() runs
@@ -114,7 +119,10 @@ export function ProductFormDialog({
       onOpenChange={(next) => {
         setOpen(next);
         if (next && !productId) setValues(EMPTY_VALUES);
-        if (next) setWarning(null);
+        if (next) {
+          setWarning(null);
+          setError(null);
+        }
       }}
     >
       <DialogTrigger render={trigger as React.ReactElement} />
@@ -215,11 +223,12 @@ export function ProductFormDialog({
               {strings.products.kcalMismatchWarning}
             </p>
           )}
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
         <DialogFooter>
           <Button onClick={handleSubmit} disabled={!values.name.trim() || isPending}>
-            {strings.common.save}
+            {isPending ? strings.common.saving : strings.common.save}
           </Button>
         </DialogFooter>
       </DialogContent>

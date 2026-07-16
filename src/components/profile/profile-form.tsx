@@ -55,9 +55,12 @@ export function ProfileForm({
   const [weightKg, setWeightKg] = useState("");
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function handleSubmit() {
     startTransition(async () => {
+      setSaved(false);
+      setError(null);
       const body: Record<string, unknown> = {
         sex: sex ?? undefined,
         birthDate: birthDate || undefined,
@@ -79,6 +82,8 @@ export function ProfileForm({
         setSaved(true);
         setWeightKg("");
         router.refresh();
+      } else {
+        setError(strings.common.genericError);
       }
     });
   }
@@ -198,11 +203,12 @@ export function ProfileForm({
 
       <div className="flex flex-col gap-2">
         <Button onClick={handleSubmit} disabled={isPending}>
-          {strings.profile.saveProfile}
+          {isPending ? strings.common.saving : strings.profile.saveProfile}
         </Button>
         {saved && !isPending && (
           <p className="text-center text-xs text-muted-foreground">{strings.profile.profileSaved}</p>
         )}
+        {error && <p className="text-center text-xs text-destructive">{error}</p>}
       </div>
     </div>
   );
