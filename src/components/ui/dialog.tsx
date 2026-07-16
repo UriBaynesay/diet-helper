@@ -11,8 +11,18 @@ function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
 
-function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
-  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+function DialogTrigger({ render, ...props }: DialogPrimitive.Trigger.Props) {
+  // Only set our own data-slot when NOT composing through render — when
+  // composing with e.g. render={<Button />}, the rendered element's own
+  // data-slot (set internally by Button) is what actually lands in the DOM,
+  // and setting ours too caused an SSR/hydration data-slot mismatch.
+  return (
+    <DialogPrimitive.Trigger
+      {...(render ? {} : { "data-slot": "dialog-trigger" })}
+      render={render}
+      {...props}
+    />
+  )
 }
 
 function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {

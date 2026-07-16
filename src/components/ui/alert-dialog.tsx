@@ -10,9 +10,15 @@ function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
   return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
 }
 
-function AlertDialogTrigger({ ...props }: AlertDialogPrimitive.Trigger.Props) {
+function AlertDialogTrigger({ render, ...props }: AlertDialogPrimitive.Trigger.Props) {
+  // See DialogTrigger's comment in dialog.tsx — same SSR/hydration
+  // data-slot mismatch when composing through render.
   return (
-    <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />
+    <AlertDialogPrimitive.Trigger
+      {...(render ? {} : { "data-slot": "alert-dialog-trigger" })}
+      render={render}
+      {...props}
+    />
   )
 }
 

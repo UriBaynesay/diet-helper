@@ -243,6 +243,8 @@ To test on a phone: the dev server binds Next's printed "Network" address to a D
 
 **Field help text:** `src/components/field-hint.tsx` — a small ⓘ icon (tap/click-to-open `Popover`) for form fields whose label doesn't fully explain them (e.g. the product form's "serving description" vs. the always-required per-100g macros). Used instead of an always-visible help line for hints that are secondary/would clutter the form. See the `frontend-ui-ux` skill for when to use an always-visible line vs. this icon pattern.
 
+**`DialogTrigger`/`AlertDialogTrigger` hydration mismatch:** composing either with `render={<Button />}` (the pattern every dialog trigger in this app uses) produced a recurring, non-blocking React hydration warning — the trigger's own hardcoded `data-slot` and the rendered `Button`'s own `data-slot` disagreed between the server and client render passes. Fixed by only setting the trigger's own `data-slot` when *not* composing through `render` (`src/components/ui/dialog.tsx`, `src/components/ui/alert-dialog.tsx`) — when `render` is set, the composed element's own `data-slot` is what actually lands in the DOM anyway.
+
 ## UI: Profile & Goals screen
 
 `src/app/profile/page.tsx` — sets the profile fields BMI/BMR/TDEE depend on, logs weight, and lets the user save a daily macro goal. This is what unblocks the Today screen's progress bars (previously always "no target set" — nothing in the UI could create a `goals` row until this screen existed).
