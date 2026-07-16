@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { strings } from "@/lib/strings";
@@ -13,6 +13,8 @@ export type IngredientRowValue = {
   productId: string;
   productName: string;
   quantityG: string;
+  /** Set when this row came from AI parsing — shown as a hint, never editable. */
+  parsedText?: string;
 };
 
 export function IngredientRow({
@@ -52,8 +54,21 @@ export function IngredientRow({
     };
   }, [query, open, value.productName]);
 
+  const isUnmatched = !value.productId;
+
   return (
-    <div className="flex flex-col gap-1.5 rounded-lg border p-2">
+    <div
+      className={
+        isUnmatched
+          ? "flex flex-col gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/5 p-2"
+          : "flex flex-col gap-1.5 rounded-lg border p-2"
+      }
+    >
+      {value.parsedText && (
+        <p dir="auto" className="text-xs text-muted-foreground">
+          {value.parsedText}
+        </p>
+      )}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Input
@@ -103,6 +118,12 @@ export function IngredientRow({
           <X className="size-3.5" />
         </Button>
       </div>
+      {isUnmatched && (
+        <p className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
+          <AlertCircle className="size-3" />
+          {strings.recipes.unmatchedIngredient}
+        </p>
+      )}
     </div>
   );
 }

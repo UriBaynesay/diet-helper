@@ -77,8 +77,8 @@ export async function POST(request: Request) {
   }
 
   const recipe = await db.query.recipes.findFirst({ where: eq(recipes.id, input.recipeId) });
-  if (!recipe || recipe.status !== "ready") {
-    return apiError("not_found", "Recipe not found or not ready", 404);
+  if (!recipe) {
+    return apiError("not_found", "Recipe not found", 404);
   }
 
   const [nutrition] = await db

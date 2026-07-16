@@ -58,7 +58,7 @@ Products are shared across all users (no per-user filtering) — the library and
 
 | Method | Route | Notes |
 |---|---|---|
-| GET | `/api/products?q=&filter=` | Fuzzy search on `name` via `pg_trgm`. `filter`: `all` \| `manual` \| `image` \| `ingested` \| `unverified` |
+| GET | `/api/products?q=&filter=` | Fuzzy search on `name` via `pg_trgm` (falls back to a substring `ILIKE` match for queries below the similarity threshold). `filter`: `all` \| `manual` \| `image` \| `unverified` |
 | POST | `/api/products` | Create |
 | PATCH | `/api/products/:id` | Partial update |
 | POST | `/api/products/:id/archive` | Soft-delete |
@@ -106,45 +106,33 @@ Macros are snapshotted at log time onto the entry itself (`kcal`/`proteinG`/`car
 
 ## Recipes & Suggestions API
 
-`recipes` and `recipe_ingredients` are shared across users, like `products` — no per-user filtering. A recipe has a `status` (`draft` | `ready` | `rejected`); only `ready` recipes are loggable or suggestable. Manually-created recipes go straight to `ready` since every ingredient always has a `productId` + `quantityG` by construction. Ingested recipes (see Recipe Ingestion below) land as `draft` and use the `raw_text`/`parsed_*`/`match_confidence` columns on `recipe_ingredients`.
+`recipes` and `recipe_ingredients` are shared across users, like `products` — no per-user filtering. **Recipes are manual-only**: every ingredient always has a `productId` and `quantityG` set (both `NOT NULL`), so a recipe is always immediately loggable and suggestable — there's no draft/ready/rejected lifecycle.
 
 `recipe_nutrition` is a **SQL view**, not a table — sum of ingredient macros ÷ servings, derived and never stored. It's created by a raw-SQL migration (`drizzle/migrations/0005_recipe_nutrition_view.sql`) and mapped read-only into Drizzle via `.existing()` (`src/db/schema/recipe-nutrition.ts`) so drizzle-kit doesn't try to manage or recreate it.
 
 | Method | Route | Notes |
 |---|---|---|
-| GET | `/api/recipes?status=` | List, optionally filtered by status |
+| GET | `/api/recipes` | List all recipes |
 | POST | `/api/recipes` | Create a recipe + its ingredients in one call |
 | GET | `/api/recipes/:id` | Recipe + ingredients + derived nutrition |
 | PATCH | `/api/recipes/:id` | Partial update; replaces the ingredient list if `ingredients` is provided |
 | DELETE | `/api/recipes/:id` | Hard delete — blocked with `409 in_use` if a diary entry references it (same "can't remove what's referenced" rule as products, enforced by the FK and caught cleanly) |
+| POST | `/api/recipes/parse` | Haiku breaks pasted recipe text into a structured, **unmatched** ingredient list — see below |
 | GET | `/api/suggestions?date=` | Top 5 ranked recipe servings for what's left of that day's target |
 
-`GET /api/suggestions` computes remaining macros (active goal − today's consumed, via the same `findActiveGoal` lookup `/api/goals` uses), scores every `ready` recipe's half/single/double-serving candidates with a deterministic weighted-deviation formula (`src/lib/suggestions/scorer.ts`, pure and unit-tested — protein weighted 2.0, kcal 1.5, carbs/fat 1.0, lower score is better), and hard-filters out anything more than 20% over remaining kcal or referencing an archived product. Verified via curl: archiving a recipe's ingredient product removes it from suggestions; logging a recipe reduces the remaining macros used by later suggestion calls; a recipe closer to the remaining macros consistently outranks a worse match at the same calorie level.
+`GET /api/suggestions` computes remaining macros (active goal − today's consumed, via the same `findActiveGoal` lookup `/api/goals` uses), scores every recipe's half/single/double-serving candidates with a deterministic weighted-deviation formula (`src/lib/suggestions/scorer.ts`, pure and unit-tested — protein weighted 2.0, kcal 1.5, carbs/fat 1.0, lower score is better), and hard-filters out anything more than 20% over remaining kcal or referencing an archived product. Verified via curl: archiving a recipe's ingredient product removes it from suggestions; logging a recipe reduces the remaining macros used by later suggestion calls; a recipe closer to the remaining macros consistently outranks a worse match at the same calorie level.
 
-## Recipe Ingestion API
+### AI-assisted recipe entry (`POST /api/recipes/parse`)
 
-**Source: Spoonacular**, chosen over scraping an Israeli site's JSON-LD (the spec's own open question, §16.1). Spoonacular returns ingredients already parsed into `{amount, unit, name}`, which collapses the ingredient-line-parsing step a Hebrew source would need — the tradeoff is English-language recipes, not Israeli home cooking. The 3-tier product matching and human mapping-review queue below still fully apply, since Spoonacular's ingredient *names* still need to map onto this app's own product library.
+`src/lib/recipes/parse-recipe.ts` calls Claude Haiku 4.5 (cost-control — this is a text-only parsing task, no vision needed) with freeform pasted recipe text and a Zod-validated output schema (`src/lib/recipes/parse-schema.ts`): recipe name/description/servings/prepMinutes/instructions (all nullable — never guessed if absent from the text) plus a list of ingredient lines (`name`, `quantity`, `unit`, and a best-effort `estimatedQuantityG` the model derives when reasonably confident, e.g. "2 cups flour" → ~240g; left `null` for count-based or vague items like "1 onion" or "salt to taste").
 
-New tables: `unit_conversions` (`unit`, nullable `ingredient_pattern` — a specific pattern beats the generic unit, `grams`), seeded with ~40 common US cooking measures via `npm run db:seed-unit-conversions` (generic: cup/tbsp/tsp/oz/lb/etc; ingredient-specific: `cup`+`flour` = 120g, overriding the generic `cup` = 240g). `ingest_runs` (`source_name`, `status`, `recipes_found`/`created`/`skipped`, `error`) — one row per run, for audit and idempotency.
+**The model never sees the product library and never returns a `productId`.** This route only ever returns freeform parsed text — matching each ingredient to a real product is a UI step the human does afterward via the same per-row product search used for manual entry (`IngredientRow`), same as the image-extraction pipeline's "model never writes a product row directly" rule. A recipe can't be saved until every ingredient the user keeps has a real, human-selected `productId`.
 
-| Method | Route | Notes |
-|---|---|---|
-| POST | `/api/cron/ingest-recipes` | Fetches a page of Spoonacular recipes, dedupes by `external_id` (`spoonacular:{id}`), creates/updates an `ingest_runs` row |
-| GET | `/api/recipes/mapping-queue` | Unmatched/low/medium-confidence ingredient lines, grouped by parsed ingredient name |
-| POST | `/api/recipes/mapping` | `{ingredientName, action: "link"|"ignore", productId?}` — fixing one name fixes every recipe using it |
-| GET / POST | `/api/unit-conversions` | List / add a conversion rule |
+Verified with a real (non-mocked) Haiku call against a pasted English recipe: correctly extracted name/servings/prepMinutes/instructions and all three ingredient lines, including leaving `estimatedQuantityG: null` for a count-based ingredient ("1 small onion") it wasn't confident enough to convert to grams.
 
-Guarded the same way as the other cron routes (`X-Cron-Secret`, excluded from Cloudflare Access).
+### Removed: Spoonacular recipe ingestion (Phase 8)
 
-**3-tier product matching** (`src/lib/ingestion/match-product.ts`), cheapest first: `pg_trgm` similarity ≥ 0.6 auto-links at `high` confidence; ≥ 0.35 auto-links but flagged `medium` for review; below that, Claude Haiku 4.5 picks from the top-20 trigram candidates (or returns no match) — capped at `medium` even on an LLM-confirmed match, since it always goes to human review, never auto-approved. The model is constrained to only ever return a `product_id` literally present in the supplied shortlist — it can't invent a product, the same guardrail the image-extraction pipeline applies to nutrition values.
-
-A recipe promotes `draft` → `ready` only when **every** ingredient is resolved: either `(product_id AND quantity_g)` are both set, or the ingredient was explicitly marked ignorable (`quantity_g = '0'`, e.g. "additional toppings" or a count-based unit like "3 large carrots" with no gram equivalent) — spec §11.2 step 5's "real ingredient, contributes nothing" case. This check is one shared function (`src/lib/ingestion/promote-recipe.ts`) used by both the ingest pipeline and the mapping endpoint.
-
-**Bug found and fixed during testing:** the original promotion check required `product_id IS NOT NULL` for *every* ingredient, which meant "ignore" could never actually unblock a recipe — contradicting the spec's own intent. Fixed and re-verified.
-
-Verified end-to-end with real Spoonacular + Claude Haiku calls (not mocked): first ingest run fetched 20 recipes, created all 20 (all landed `draft` — the product library starts empty, the spec's own "bootstrapping problem," §11.3); a second run against the same page skipped all 20 and created 0, matching the spec's "a second run creates zero duplicate recipes" acceptance criterion exactly. Ingredients showed up correctly grouped in the mapping queue (e.g. "carrots" grouped across 4 different recipes); linking one product mapping updated all 4 recipes' carrot lines in a single call and promoted the recipes that were blocked only by it — matching the spec's acceptance criterion word for word. Also verified: missing `X-Cron-Secret` → 401.
-
-No mapping-review UI yet — API only, same pattern as every prior phase.
+The Spoonacular-based recipe ingestion pipeline (scheduled cron ingest, 3-tier product matching, mapping-review queue, `unit_conversions`/`ingest_runs` tables, `recipe_ingredients.raw_text`/`parsed_*`/`match_confidence` columns, `recipes.status`/`source`/`sourceName`/`sourceUrl`/`externalId`) was removed in favor of manual-only recipe entry (optionally AI-assisted via the paste-and-parse flow above). Migration `drizzle/migrations/0009_previous_millenium_guard.sql` drops the now-unused tables/columns and tightens `recipe_ingredients.productId`/`quantityG` to `NOT NULL`, since every recipe ingredient is now always fully resolved by construction.
 
 ## Profile, BMI & Goals API
 
@@ -188,8 +176,7 @@ See `.env.example` for the full list. Notes:
 - `CRON_SECRET` guards `/api/cron/*` routes — these are excluded from Cloudflare Access verification entirely (an OS scheduler calls them locally with no JWT) and are protected by this shared secret instead. The guard (`src/lib/cron/guard.ts`) also rejects any request carrying Cloudflare forwarding headers, so these routes can't be reached through the tunnel even with the correct secret.
 - `OWNER_EMAIL` is only read by `scripts/seed-owner.ts`, never by the app itself.
 - `GMAIL_USER`/`GMAIL_APP_PASSWORD` (a Gmail App Password, not the account password — requires 2-Step Verification) and `APP_URL` (used for the "open the app" link in the daily summary email) are required at runtime by `src/lib/env.ts` once the notifications cron route is hit.
-- `ANTHROPIC_API_KEY` is required at runtime by `src/lib/env.ts` once the image-extraction route (`/api/products/extract`) is hit.
-- `SPOONACULAR_API_KEY` is required at runtime by `src/lib/env.ts` once the ingest cron route (`/api/cron/ingest-recipes`) is hit.
+- `ANTHROPIC_API_KEY` is required at runtime by `src/lib/env.ts` once the image-extraction route (`/api/products/extract`) or the recipe-parse route (`/api/recipes/parse`) is hit.
 
 ## Running the full stack
 
@@ -219,7 +206,7 @@ npm test   # vitest run
 
 Unit tests cover the pure calculation functions only (macro math, BMI/BMR/TDEE, sanity checks) — no DB/UI tests in v1. See the `unit-testing` skill for conventions. Tests must pass before merging a branch into `main`.
 
-Coverage was audited against the spec's exact required list (§14: macro math, per-serving↔per-100g normalization, BMR/TDEE/BMI, unit↔gram conversion, the suggestion scorer) — all five already had dedicated tests from earlier phases. One real gap turned up: `src/lib/ingestion/promote-recipe.ts` had a pure "is this ingredient resolved" decision buried inside a DB-touching function, untested. Extracted to `src/lib/ingestion/ingredient-resolved.ts` with a regression test for the exact bug found and fixed in Phase 8 (an ignorable ingredient — `quantity_g = '0'`, no product — must still count as resolved). 45 tests total, all passing.
+Coverage was originally audited against the spec's exact required list (§14: macro math, per-serving↔per-100g normalization, BMR/TDEE/BMI, unit↔gram conversion, the suggestion scorer). The Spoonacular-ingestion-specific tests (`src/lib/ingestion/*.test.ts`) were removed along with the pipeline itself (see Recipes & Suggestions API above) — 35 tests remain, all passing, covering everything except ingestion, which no longer exists.
 
 ## RTL conventions
 
@@ -268,9 +255,10 @@ To test on a phone: the dev server binds Next's printed "Network" address to a D
 
 `src/app/recipes/page.tsx` (list), `src/app/recipes/[id]/page.tsx` (detail), `src/app/suggestions/page.tsx`. `src/lib/recipes/get-recipes.ts` and `src/lib/recipes/get-recipe-detail.ts` are the shared query paths behind both the API routes and these pages, same pattern as products/diary. `src/lib/suggestions/get-suggestions.ts` extracts what was previously logic embedded directly in `GET /api/suggestions` — now shared with the Suggestions Server Component.
 
-- `src/components/recipes/recipe-form-dialog.tsx` — one dialog handles both create (`POST /api/recipes`) and edit (`PATCH /api/recipes/:id`), with a dynamic list of `IngredientRow`s (`src/components/recipes/ingredient-row.tsx`, each with its own debounced product search, same pattern as `AddFoodDialog`). Save is disabled until there's a name and at least one ingredient with both a resolved product and a quantity.
-- Every ingredient in a recipe created through this form always has `productId` + `quantityG` set by construction (the schema requires it) — the recipe promotes straight to `status: "ready"` server-side, matching the spec's rule that only ingested recipes start as `draft`. The edit dialog's `initialValues` only includes fully-resolved ingredients from `getRecipeDetail`'s inner join; unresolved ones (ingested-recipe-only, per the mapping-queue flow) never reach this form.
+- `src/components/recipes/recipe-form-dialog.tsx` — one dialog handles both create (`POST /api/recipes`) and edit (`PATCH /api/recipes/:id`), with a dynamic list of `IngredientRow`s (`src/components/recipes/ingredient-row.tsx`, each with its own debounced product search, same pattern as `AddFoodDialog`). Save is disabled until there's a name and at least one ingredient with both a resolved product and a quantity. Description/instructions use `Textarea`, not `Input` — both are naturally multiline text.
+- **Two entry modes**, toggled at the top of the create dialog (edit only ever uses the manual form): **manual** (the form as described above) and **paste** (a `Textarea` for pasted recipe text + "פירוק לרכיבים" button calling `POST /api/recipes/parse`). A successful parse switches to manual mode with every field pre-filled — including ingredient rows built from the parsed lines, each with `productId` deliberately empty (`IngredientRow`'s `parsedText` prop shows what the model actually read, e.g. "2 cups flour", as a hint above the search box). An amber "unmatched" badge and border (`IngredientRow`'s `isUnmatched` state) marks any ingredient without a resolved product, and a banner above the list reminds the user every ingredient needs manual matching before saving — nothing is ever auto-matched, since the parse step has no access to the product library.
 - `src/components/recipes/delete-recipe-button.tsx` — delete goes through an `AlertDialog` confirmation; a `409 in_use` response (the recipe is referenced by a diary entry) is caught and shown inline rather than surfacing as a generic failure.
+- **Bug fixed:** `IngredientRow`'s product search returned empty results for realistic short/single-word queries (e.g. "טונה" against a product named "נתחי טונה בהירה בשמן" scores ~0.25 on `pg_trgm`'s default 0.3 similarity threshold — below the cutoff despite being an exact substring match). `getProducts` (`src/lib/products/get-products.ts`) now falls back to a plain `ILIKE` substring match alongside the trigram similarity check, so any partial-word search finds the product regardless of trigram score.
 - `src/components/suggestions/suggestion-card.tsx` — each of the top-5 ranked candidates (recipe + serving multiplier) has its own meal-type selector and a "log this" button that posts directly to `POST /api/diary` with `{recipeId, servings}`, mirroring `AddFoodDialog`'s product-entry flow. No goal set yet → the whole suggestions list is replaced with an explanatory message instead of an empty/broken state, matching `GET /api/suggestions`'s own `400 no_goal` guard.
 - `AppNav` (`src/components/app-nav.tsx`) now has 5 items and scrolls horizontally (`overflow-x-auto`) rather than wrapping — needed once the nav grew past what reliably fits a phone-width screen without wrapping to a second line.
 

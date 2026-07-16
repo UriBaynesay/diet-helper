@@ -4,7 +4,6 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { getRecipeDetail } from "@/lib/recipes/get-recipe-detail";
 import { strings } from "@/lib/strings";
 import { AppNav } from "@/components/app-nav";
-import { RecipeStatusBadge } from "@/components/recipes/recipe-status-badge";
 import { RecipeFormDialog } from "@/components/recipes/recipe-form-dialog";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { Button } from "@/components/ui/button";
@@ -32,10 +31,7 @@ export default async function RecipeDetailPage({
         </Link>
 
         <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-semibold">{recipe.name}</h1>
-            <RecipeStatusBadge status={recipe.status} />
-          </div>
+          <h1 className="text-xl font-semibold">{recipe.name}</h1>
           <RecipeFormDialog
             recipeId={recipe.id}
             initialValues={{
@@ -45,30 +41,20 @@ export default async function RecipeDetailPage({
               prepMinutes: recipe.prepMinutes?.toString() ?? "",
               instructions: recipe.instructions ?? "",
               tags: recipe.tags?.join(", ") ?? "",
-              // Only fully-resolved ingredients (productId + quantityG both
-              // set) are editable here — unresolved ones only occur on
-              // ingested recipes and are fixed via the mapping-queue flow,
-              // not this manual-recipe form.
-              ingredients: ingredients
-                .filter((i) => i.productId && i.quantityG)
-                .map((i) => ({
-                  key: i.id,
-                  productId: i.productId as string,
-                  productName: i.productName,
-                  quantityG: i.quantityG as string,
-                })),
+              ingredients: ingredients.map((i) => ({
+                key: i.id,
+                productId: i.productId,
+                productName: i.productName,
+                quantityG: i.quantityG,
+              })),
             }}
             trigger={<Button variant="outline" size="sm">{strings.common.save}</Button>}
           />
         </div>
 
-        {recipe.status !== "ready" && (
-          <p className="rounded-lg bg-amber-500/10 p-2 text-sm text-amber-700 dark:text-amber-400">
-            {strings.recipes.notReadyNotice}
-          </p>
+        {recipe.description && (
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{recipe.description}</p>
         )}
-
-        {recipe.description && <p className="text-sm text-muted-foreground">{recipe.description}</p>}
 
         <div dir="ltr" className="flex gap-4 text-sm text-muted-foreground">
           <span>
