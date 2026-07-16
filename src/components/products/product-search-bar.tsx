@@ -12,14 +12,13 @@ import {
 } from "@/components/ui/select";
 import { strings } from "@/lib/strings";
 
-const FILTERS = ["all", "manual", "image", "ingested", "unverified"] as const;
+const FILTERS = ["all", "manual", "image", "unverified"] as const;
 type Filter = (typeof FILTERS)[number];
 
 const FILTER_LABELS: Record<Filter, string> = {
   all: strings.products.filterAll,
   manual: strings.products.filterManual,
   image: strings.products.filterImage,
-  ingested: strings.products.filterIngested,
   unverified: strings.products.filterUnverified,
 };
 

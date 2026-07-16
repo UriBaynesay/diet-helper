@@ -4,7 +4,7 @@ import { recipes, recipeIngredients, recipeNutrition } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
 import { requireUser, UnauthenticatedError } from "@/lib/auth/require-user";
 import { recipeInputSchema } from "@/lib/recipes/schema";
-import { getRecipes, isRecipeStatus } from "@/lib/recipes/get-recipes";
+import { getRecipes } from "@/lib/recipes/get-recipes";
 
 export async function GET(request: Request) {
   try {
@@ -16,11 +16,7 @@ export async function GET(request: Request) {
     throw error;
   }
 
-  const { searchParams } = new URL(request.url);
-  const statusParam = searchParams.get("status") ?? undefined;
-  const status = isRecipeStatus(statusParam) ? statusParam : undefined;
-
-  const rows = await getRecipes(status);
+  const rows = await getRecipes();
   return apiData(rows);
 }
 
@@ -61,11 +57,6 @@ export async function POST(request: Request) {
       prepMinutes: input.prepMinutes,
       tags: input.tags,
       imageUrl: input.imageUrl,
-      source: "manual",
-      // Every ingredient here has product_id + quantity_g by construction
-      // (the schema requires it), so a manually-created recipe is ready
-      // immediately — only ingested recipes (phase 8) start as draft.
-      status: "ready",
     })
     .returning();
 

@@ -41,10 +41,10 @@ export async function getSuggestions(userId: string, date: string) {
     fatG: Number(activeGoal.targetFatG) - consumed.fatG,
   };
 
-  const readyRecipes = await db.select().from(recipes).where(eq(recipes.status, "ready"));
+  const allRecipes = await db.select().from(recipes);
 
   const candidates = [];
-  for (const recipe of readyRecipes) {
+  for (const recipe of allRecipes) {
     const ingredients = await db
       .select({ archivedAt: products.archivedAt })
       .from(recipeIngredients)

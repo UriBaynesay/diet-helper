@@ -11,7 +11,7 @@ import {
 import { sql } from "drizzle-orm";
 import { users } from "./users";
 
-export const productSourceEnum = pgEnum("product_source", ["manual", "image", "ingested"]);
+export const productSourceEnum = pgEnum("product_source", ["manual", "image"]);
 
 export const products = pgTable(
   "products",

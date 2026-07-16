@@ -1,25 +1,18 @@
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { getRecipes, isRecipeStatus } from "@/lib/recipes/get-recipes";
+import { getRecipes } from "@/lib/recipes/get-recipes";
 import { strings } from "@/lib/strings";
 import { Button } from "@/components/ui/button";
 import { AppNav } from "@/components/app-nav";
 import { RecipeListItem } from "@/components/recipes/recipe-list-item";
 import { RecipeFormDialog } from "@/components/recipes/recipe-form-dialog";
 
-export default async function RecipesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string }>;
-}) {
+export default async function RecipesPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const { status: statusParam } = await searchParams;
-  const status = isRecipeStatus(statusParam) ? statusParam : undefined;
-
-  const recipes = await getRecipes(status);
+  const recipes = await getRecipes();
 
   return (
     <>
