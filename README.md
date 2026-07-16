@@ -242,3 +242,16 @@ Cloudflare Access has no local equivalent to click through, so `/login` (`src/ap
 To test on a phone: the dev server binds Next's printed "Network" address to a Docker/WSL virtual adapter, not your real LAN IP — find the actual IPv4 via `ipconfig` (Wi-Fi adapter) and browse to `http://<that-ip>:3000` from a device on the same Wi-Fi.
 
 **Known issue:** on iOS (Safari and Chrome, which shares Safari's WebKit engine on iOS), the Today page renders styled correctly but buttons/links don't respond — looks like a hydration failure specific to WebKit in dev mode. Not yet root-caused (no Mac available to attach Safari Web Inspector for a console trace); worth re-testing against a production build (`npm run build && npm start`) before digging further, since Turbopack's dev-mode HMR websocket is a plausible culprit when accessed over a LAN IP rather than localhost.
+
+## UI: Products screen
+
+`src/app/products/page.tsx` — search/filter the shared product library, create/edit via a dialog, archive via a confirmation dialog. `src/lib/products/get-products.ts` (`getProducts(q, filter)`) is the single query path shared by `GET /api/products` and this page, same pattern as `getDiaryDay`.
+
+- `src/components/products/product-form-dialog.tsx` — one `ProductFormDialog` handles both create (`POST /api/products`) and edit (`PATCH /api/products/:id`), keyed off an optional `productId` prop. A `kcal_mismatch` warning from the API doesn't block the save (the row is already written) — the dialog stays open and shows the warning rather than implying the save failed.
+- `src/components/products/product-search-bar.tsx` — debounced search input + filter `Select`, both drive the page via URL search params (`?q=&filter=`) so the page itself stays a Server Component.
+- `src/components/products/archive-product-button.tsx` — archive is soft-delete (`POST /api/products/:id/archive`) behind an `AlertDialog` confirmation, since it's not reversible from the UI.
+- `src/components/app-nav.tsx` — simple top nav linking Today ↔ Products; added per-page rather than in the root layout since `/login`/`/forbidden` shouldn't show it.
+
+**Popover/dialog background fix:** `Dialog`, `AlertDialog`, and `Select` (`src/components/ui/*.tsx`) originally used shadcn's `bg-popover` theme token for their popup background, which rendered as gray instead of solid white/dark in testing. Changed to an explicit `bg-white dark:bg-neutral-900` on all three. Root cause not fully isolated (ruled out `oklch()` support, dark-mode forcing, and stacking-context bugs); the explicit color is a reliable fix regardless of the underlying browser behavior. Apply the same explicit-background pattern to any new popup component (e.g. the newly-added `Popover`) rather than trusting `bg-popover`.
+
+**Field help text:** `src/components/field-hint.tsx` — a small ⓘ icon (tap/click-to-open `Popover`) for form fields whose label doesn't fully explain them (e.g. the product form's "serving description" vs. the always-required per-100g macros). Used instead of an always-visible help line for hints that are secondary/would clutter the form. See the `frontend-ui-ux` skill for when to use an always-visible line vs. this icon pattern.
