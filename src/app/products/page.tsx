@@ -4,7 +4,7 @@ import { Plus, Camera } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getProducts, isProductFilter } from "@/lib/products/get-products";
 import { strings } from "@/lib/strings";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ProductSearchBar } from "@/components/products/product-search-bar";
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
 import { ProductListItem } from "@/components/products/product-list-item";
@@ -30,10 +30,13 @@ export default async function ProductsPage({
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">{strings.products.title}</h1>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" render={<Link href="/products/extract" />}>
+            <Link
+              href="/products/extract"
+              className={buttonVariants({ size: "sm", variant: "outline" })}
+            >
               <Camera className="size-4" />
               {strings.products.addFromPhoto}
-            </Button>
+            </Link>
             <ProductFormDialog
               trigger={
                 <Button size="sm">
