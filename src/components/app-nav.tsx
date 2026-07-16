@@ -1,27 +1,32 @@
 import Link from "next/link";
 import { strings } from "@/lib/strings";
 
-export function AppNav({ active }: { active: "today" | "products" | "profile" }) {
+type ActiveScreen = "today" | "products" | "profile" | "recipes" | "suggestions";
+
+const ITEMS: { key: ActiveScreen; href: string; label: string }[] = [
+  { key: "today", href: "/", label: strings.nav.today },
+  { key: "products", href: "/products", label: strings.nav.products },
+  { key: "recipes", href: "/recipes", label: strings.nav.recipes },
+  { key: "suggestions", href: "/suggestions", label: strings.nav.suggestions },
+  { key: "profile", href: "/profile", label: strings.nav.profile },
+];
+
+export function AppNav({ active }: { active: ActiveScreen }) {
   return (
-    <nav className="flex justify-center gap-4 border-b py-2">
-      <Link
-        href="/"
-        className={active === "today" ? "text-sm font-semibold" : "text-sm text-muted-foreground"}
-      >
-        {strings.nav.today}
-      </Link>
-      <Link
-        href="/products"
-        className={active === "products" ? "text-sm font-semibold" : "text-sm text-muted-foreground"}
-      >
-        {strings.nav.products}
-      </Link>
-      <Link
-        href="/profile"
-        className={active === "profile" ? "text-sm font-semibold" : "text-sm text-muted-foreground"}
-      >
-        {strings.nav.profile}
-      </Link>
+    <nav className="flex gap-4 overflow-x-auto border-b px-4 py-2">
+      {ITEMS.map((item) => (
+        <Link
+          key={item.key}
+          href={item.href}
+          className={
+            active === item.key
+              ? "shrink-0 text-sm font-semibold"
+              : "shrink-0 text-sm text-muted-foreground"
+          }
+        >
+          {item.label}
+        </Link>
+      ))}
     </nav>
   );
 }
