@@ -57,6 +57,7 @@ export const strings = {
   products: {
     title: "מוצרים",
     searchPlaceholder: "חיפוש מוצר...",
+    addFromPhoto: "הוספה מתמונה",
     addProduct: "מוצר חדש",
     editProduct: "עריכת מוצר",
     newProduct: "מוצר חדש",
@@ -189,6 +190,25 @@ export const strings = {
     logThis: "רישום ביומן",
     mealLabel: "ארוחה",
     logSuccess: "נוסף ליומן בהצלחה.",
+  },
+  extraction: {
+    title: "הוספת מוצר מתמונה",
+    chooseImage: "בחירת תמונה",
+    changeImage: "החלפת תמונה",
+    upload: "העלאה וניתוח",
+    uploading: "מעלה...",
+    processing: "מנתח את התמונה...",
+    failed: "הניתוח נכשל.",
+    retry: "ניסיון חוזר",
+    reviewTitle: "בדיקת הנתונים",
+    reviewHint: "הנתונים חושבו אוטומטית מהתמונה — יש לבדוק ולתקן לפני שמירה.",
+    confidenceHigh: "רמת ביטחון גבוהה",
+    confidenceMedium: "רמת ביטחון בינונית",
+    confidenceLow: "רמת ביטחון נמוכה — כדאי לבדוק בקפידה",
+    missingServingSize: "התווית מציגה נתונים למנה, אך לא זוהה גודל מנה. יש להזין גודל מנה בגרמים כדי לחשב נכון ל-100 גרם, או להזין את הערכים ידנית.",
+    confirmAndSave: "אישור ושמירה כמוצר",
+    startOver: "התחלה מחדש",
+    unsupportedFile: "יש לבחור קובץ תמונה (jpeg, png, webp או heic) עד 10MB.",
   },
 } as const;
 

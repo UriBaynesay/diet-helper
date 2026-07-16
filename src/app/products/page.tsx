@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { Plus, Camera } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getProducts, isProductFilter } from "@/lib/products/get-products";
 import { strings } from "@/lib/strings";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ProductSearchBar } from "@/components/products/product-search-bar";
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
 import { ProductListItem } from "@/components/products/product-list-item";
@@ -28,14 +29,23 @@ export default async function ProductsPage({
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">{strings.products.title}</h1>
-          <ProductFormDialog
-            trigger={
-              <Button size="sm">
-                <Plus className="size-4" />
-                {strings.products.addProduct}
-              </Button>
-            }
-          />
+          <div className="flex gap-2">
+            <Link
+              href="/products/extract"
+              className={buttonVariants({ size: "sm", variant: "outline" })}
+            >
+              <Camera className="size-4" />
+              {strings.products.addFromPhoto}
+            </Link>
+            <ProductFormDialog
+              trigger={
+                <Button size="sm">
+                  <Plus className="size-4" />
+                  {strings.products.addProduct}
+                </Button>
+              }
+            />
+          </div>
         </div>
 
         <ProductSearchBar q={q ?? ""} filter={filter} />

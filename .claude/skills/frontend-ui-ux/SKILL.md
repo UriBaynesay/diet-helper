@@ -21,6 +21,7 @@ This app is Hebrew, RTL, and mobile-first. The owner uses it primarily on their 
 - Before writing a new interactive primitive (dialog, dropdown, select, popover, tabs, tooltip, etc.), check `src/components/ui/` first, then `npx shadcn@latest add <component>` if it's missing. Don't hand-roll a modal with raw `useState` + a fixed-position `div` when `Dialog` already exists.
 - `components.json` has `"rtl": true` — new components generated via the CLI come out RTL-safe. Never hand-edit a freshly generated `src/components/ui/*` file's structure; if it needs a tweak, prefer composing around it in a wrapper component instead.
 - shadcn primitives are built on `@base-ui/react` — check the primitive's `.Props` type (e.g. `SelectPrimitive.Value.Props`) before assuming a prop exists.
+- Don't put a Next.js `Link` (renders `<a>`) inside `Button`'s `render` prop — `Button` defaults to `nativeButton: true` and base-ui throws a console error when `render` swaps in a non-`<button>` element. For a link styled as a button, apply `buttonVariants({ variant, size })` (exported from `button.tsx`) as the `Link`'s `className` directly instead of composing through `Button`/`render`. `render` is fine for swapping in another *button-semantics* element (e.g. `AlertDialogCancel`'s `Close` composing with `Button`) — the rule is specifically about swapping in a non-button tag.
 
 ## Reuse before building new
 
