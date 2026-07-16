@@ -199,6 +199,18 @@ docker compose up
 
 Starts `postgres`, `app` (migrates on boot, then serves), and `cloudflared` (requires a real `CLOUDFLARE_TUNNEL_TOKEN` — without one it will fail to connect, which is expected until a tunnel is provisioned in the Cloudflare dashboard).
 
+## Backups
+
+```bash
+npm run db:backup
+```
+
+Runs `scripts/backup-db.sh` — a host-side shell script, not a Next.js route, since `pg_dump` lives in the `postgres:16-alpine` image, not the app's `node:20-alpine` one. It shells out to `docker exec <container> pg_dump ...` and writes a timestamped dump to `./data/backups/` (gitignored, same pattern as `./data/uploads`), keeping the last 30 backups automatically. `POSTGRES_CONTAINER`/`POSTGRES_USER`/`POSTGRES_DB` are overridable env vars, defaulting to the `docker-compose.yml` service name and the Phase 1 defaults.
+
+Meant to be triggered by the same host OS scheduler that calls the cron endpoints — schedule it alongside (or right after) the `ingest-recipes` trigger, since both already run on a host-scheduler cadence rather than inside a container.
+
+Verified against the real Dockerized Postgres: produced a valid ~28KB SQL dump including the `drizzle` migrations schema, ran twice back-to-back without the retention logic misbehaving on a small file count, and failed cleanly with a non-zero exit code when pointed at a wrong container name — a scheduler needs to detect a failed backup, not silently get an empty one.
+
 ## Tests
 
 ```bash
@@ -206,6 +218,8 @@ npm test   # vitest run
 ```
 
 Unit tests cover the pure calculation functions only (macro math, BMI/BMR/TDEE, sanity checks) — no DB/UI tests in v1. See the `unit-testing` skill for conventions. Tests must pass before merging a branch into `main`.
+
+Coverage was audited against the spec's exact required list (§14: macro math, per-serving↔per-100g normalization, BMR/TDEE/BMI, unit↔gram conversion, the suggestion scorer) — all five already had dedicated tests from earlier phases. One real gap turned up: `src/lib/ingestion/promote-recipe.ts` had a pure "is this ingredient resolved" decision buried inside a DB-touching function, untested. Extracted to `src/lib/ingestion/ingredient-resolved.ts` with a regression test for the exact bug found and fixed in Phase 8 (an ignorable ingredient — `quantity_g = '0'`, no product — must still count as resolved). 45 tests total, all passing.
 
 ## RTL conventions
 

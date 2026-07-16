@@ -40,6 +40,9 @@ yarn-error.log*
 # local uploaded label images (FR-3 image extraction)
 /data/uploads
 
+# local pg_dump backups
+/data/backups
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
