@@ -95,16 +95,16 @@ export function ProfileForm({
             <RadioGroup
               value={sex ?? undefined}
               onValueChange={(v) => setSex(v as Sex)}
-              className="flex flex-row gap-4"
+              className="flex flex-row gap-8"
             >
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="male" />
-                {strings.profile.sexMale}
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="female" />
-                {strings.profile.sexFemale}
-              </label>
+              <div className="flex items-center gap-2 text-sm">
+                <RadioGroupItem value="male" id="sex-male" />
+                <Label htmlFor="sex-male">{strings.profile.sexMale}</Label>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <RadioGroupItem value="female" id="sex-female" />
+                <Label htmlFor="sex-female">{strings.profile.sexFemale}</Label>
+              </div>
             </RadioGroup>
           </div>
 

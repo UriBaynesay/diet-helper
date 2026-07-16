@@ -44,6 +44,13 @@ This app is Hebrew, RTL, and mobile-first. The owner uses it primarily on their 
 - This came up concretely: the product form's "תיאור מנה" (serving description) field paired with "גודל מנה (גרם)" wasn't self-explanatory — it needed a one-line explanation of what a "serving" means and how it relates to the required per-100g macro fields. Fields that are optional/for-future-use (like a product's barcode, unused by any current flow) should say so, so the user doesn't wonder whether skipping them breaks something.
 - Keep help text in `strings.ts` like any other UI string — no inline Hebrew literals.
 
+## Conditional (`data-*:`) background utilities render broken — use explicit colors
+
+- In this environment, Tailwind `data-[attr]:bg-<token>` / `data-checked:bg-<token>` utilities (theme-variable-backed backgrounds gated behind a `data-*` state) reliably fail to resolve the color at runtime — the element renders with no visible fill even though the class is present in the DOM and the underlying state (`aria-checked`, React state, etc.) is genuinely correct. Confirmed on `Dialog`/`AlertDialog`/`Select` popups (`bg-popover`) and on `RadioGroup`/`Switch` checked states (`data-checked:bg-primary`).
+- **Plain, unconditional `bg-<token>` classes are NOT affected** — e.g. `Badge`'s default `bg-primary` renders fine. The bug is specific to the `data-*:` variant combination, not theme tokens generally. Don't over-fix by rewriting every `bg-*` in `src/components/ui/*` — only ones gated behind a `data-*:`/`aria-*:` conditional.
+- Fix: replace the conditional token class with an explicit color pair, e.g. `data-checked:bg-primary` → `data-checked:bg-neutral-900 dark:data-checked:bg-neutral-100`, `bg-popover` → `bg-white dark:bg-neutral-900`. Apply this to any new shadcn component with a `data-checked:`/`data-open:`/`data-selected:`-gated background before shipping it — verify visually, don't assume the class list being correct means the color renders.
+- If a control looks non-functional even though logging confirms the state/handler fires correctly (as happened with `RadioGroup`'s `onValueChange`), suspect this rendering bug before suspecting the event wiring — add console logs to confirm state actually changes before touching handler logic.
+
 ## Verifying on an actual phone
 
 The dev server binds to a virtual adapter by default and phones can't reach that — use the machine's real LAN IPv4 (`ipconfig` → the Wi-Fi adapter's IPv4, not the Docker/WSL one) and browse to `http://<that-ip>:3000` from a phone on the same Wi-Fi. Useful for catching real touch/viewport issues that browser resizing misses (safe-area insets, actual tap accuracy, on-screen keyboard covering inputs).
