@@ -4,6 +4,7 @@ import { recipes, recipeIngredients, recipeNutrition } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
 import { requireUser, UnauthenticatedError } from "@/lib/auth/require-user";
 import { recipeInputSchema } from "@/lib/recipes/schema";
+import { getRecipes, isRecipeStatus } from "@/lib/recipes/get-recipes";
 
 export async function GET(request: Request) {
   try {
@@ -16,12 +17,10 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status");
+  const statusParam = searchParams.get("status") ?? undefined;
+  const status = isRecipeStatus(statusParam) ? statusParam : undefined;
 
-  const rows = status
-    ? await db.select().from(recipes).where(eq(recipes.status, status as "draft" | "ready" | "rejected"))
-    : await db.select().from(recipes);
-
+  const rows = await getRecipes(status);
   return apiData(rows);
 }
 
