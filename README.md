@@ -223,4 +223,22 @@ Coverage was audited against the spec's exact required list (§14: macro math, p
 
 ## RTL conventions
 
-The UI is Hebrew-only, `dir="rtl"`. Use Tailwind logical properties everywhere (`ms-*`/`me-*`/`ps-*`/`pe-*`/`start-*`/`end-*`/`text-start`/`text-end`) — never physical ones (`ml-*`/`mr-*`/`left-*`/`right-*`/`text-left`/`text-right`). All UI strings live in `src/lib/strings.ts`; no inline Hebrew literals in components.
+The UI is Hebrew-only, `dir="rtl"`. Use Tailwind logical properties everywhere (`ms-*`/`me-*`/`ps-*`/`pe-*`/`start-*`/`end-*`/`text-start`/`text-end`) — never physical ones (`ml-*`/`mr-*`/`left-*`/`right-*`/`text-left`/`text-right`). All UI strings live in `src/lib/strings.ts`; no inline Hebrew literals in components. See the `frontend-ui-ux` skill for the full conventions (mobile-first, shadcn/ui usage, component reuse) that apply to any UI work.
+
+## UI: Today screen
+
+The first UI screen (`src/app/page.tsx`) is the daily diary: date navigation, per-macro progress bars against the active goal, meal-grouped entries, and an add-food dialog. Built on [shadcn/ui](https://ui.shadcn.com) (`@base-ui/react` primitives, `components.json` has `"rtl": true` so generated components come out RTL-safe) — run `npx shadcn@latest add <component>` to pull in more.
+
+- `src/lib/auth/current-user.ts` — `getCurrentUser()` lets a Server Component read the same verified `x-user-id`/`x-user-email` headers `proxy.ts` attaches, without re-deriving auth logic.
+- `src/lib/diary/get-day.ts` — `getDiaryDay(userId, date)` is the single query path shared by `GET /api/diary` and the Today page, so there's no duplicate DB logic and no HTTP round-trip from the Server Component.
+- `src/components/diary/` — `DateNav` (client, RTL-flipped chevrons: "previous day" is a rightward chevron since the reading/timeline direction is flipped), `MacroProgress`, `EntryList` + `DeleteEntryButton`, `AddFoodDialog` (debounced product search → quantity/meal select → `POST /api/diary`).
+- Unauthenticated **page** requests now redirect to `/login?from=<path>` (`src/proxy.ts`); unauthenticated **API** requests still get a JSON 401/403, distinguished by whether the path starts with `/api/`.
+- Both `proxy.ts`'s redirect and `/api/dev-login`'s post-login redirect build the target URL from the request's `Host` header (not `request.url`/`request.nextUrl`, which Next can normalize to `localhost`) — otherwise logging in from a phone over the LAN IP bounces back to `localhost` instead of staying on the IP the phone actually used.
+
+### Dev-only login
+
+Cloudflare Access has no local equivalent to click through, so `/login` (`src/app/login/page.tsx`) renders a dev-only email form when `NODE_ENV=development`, posting to `POST /api/dev-login`. That route sets the `dev-user-email` cookie, which `proxy.ts` accepts as a dev bypass alongside the existing `x-dev-user-email` header (the header covers curl; the cookie covers real browser navigation, since browsers don't let pages set arbitrary request headers). Both paths are hard-gated on `NODE_ENV === "development"` and return 404/redirect-to-forbidden otherwise.
+
+To test on a phone: the dev server binds Next's printed "Network" address to a Docker/WSL virtual adapter, not your real LAN IP — find the actual IPv4 via `ipconfig` (Wi-Fi adapter) and browse to `http://<that-ip>:3000` from a device on the same Wi-Fi.
+
+**Known issue:** on iOS (Safari and Chrome, which shares Safari's WebKit engine on iOS), the Today page renders styled correctly but buttons/links don't respond — looks like a hydration failure specific to WebKit in dev mode. Not yet root-caused (no Mac available to attach Safari Web Inspector for a console trace); worth re-testing against a production build (`npm run build && npm start`) before digging further, since Turbopack's dev-mode HMR websocket is a plausible culprit when accessed over a LAN IP rather than localhost.
