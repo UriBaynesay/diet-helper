@@ -46,6 +46,7 @@ export function AddFoodDialog({ date }: { date: string }) {
   const [selected, setSelected] = useState<Product | null>(null);
   const [quantityG, setQuantityG] = useState("100");
   const [mealType, setMealType] = useState<MealType>("breakfast");
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export function AddFoodDialog({ date }: { date: string }) {
     setSelected(null);
     setQuantityG("100");
     setMealType("breakfast");
+    setError(null);
   }
 
   function handleSubmit() {
@@ -87,6 +89,7 @@ export function AddFoodDialog({ date }: { date: string }) {
     if (!Number.isFinite(qty) || qty <= 0) return;
 
     startTransition(async () => {
+      setError(null);
       const res = await fetch("/api/diary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -101,6 +104,8 @@ export function AddFoodDialog({ date }: { date: string }) {
         setOpen(false);
         reset();
         router.refresh();
+      } else {
+        setError(strings.common.genericError);
       }
     });
   }
@@ -196,6 +201,7 @@ export function AddFoodDialog({ date }: { date: string }) {
               </SelectContent>
             </Select>
           </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
         <DialogFooter>
@@ -203,7 +209,7 @@ export function AddFoodDialog({ date }: { date: string }) {
             onClick={handleSubmit}
             disabled={!selected || isPending}
           >
-            {strings.addFood.submit}
+            {isPending ? strings.common.saving : strings.addFood.submit}
           </Button>
         </DialogFooter>
       </DialogContent>

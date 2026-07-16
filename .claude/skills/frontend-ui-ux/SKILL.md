@@ -15,6 +15,8 @@ This app is Hebrew, RTL, and mobile-first. The owner uses it primarily on their 
 - Dialogs (shadcn `Dialog`) already constrain to `max-w-[calc(100%-2rem)]` — don't override that with a fixed wide `max-w-*` that breaks on narrow screens.
 - Avoid hover-only affordances (hover-to-reveal actions, tooltips-only) — nothing on a touchscreen hovers. If an action needs a trigger, make it always-visible or tap-activated.
 - Test any new screen by resizing the browser to phone width (or actual phone over LAN — see below) before calling it done.
+- `truncate` on a `span` only works if the flex row it's a **direct child of** can itself shrink below its content's natural width — that means `min-w-0` on that *immediate* parent, not just somewhere up the ancestor chain. A common miss: a name + a fixed-size sibling (badge, icon, button) in a `flex items-center gap-2` row — the row needs its own `min-w-0` even if an outer wrapper already has one, or the name never actually truncates and pushes the sibling off-screen on a narrow phone. See `ProductListItem`'s name+badge row for the fixed pattern.
+- Mutation handlers (`fetch` for create/update/delete) must never be `if (res.ok) {...}` with no `else` — a failed request should never look identical to nothing happening. Every mutating action in this app sets an error message on failure (`strings.common.genericError`, or a more specific one when the failure reason is actionable, e.g. `strings.recipes.productNotFoundError`) and shows a pending-state label swap (`strings.common.saving`) while in flight. Copy this pattern for any new mutation — don't add a fourth "silent failure" component.
 
 ## Use shadcn/ui — don't hand-roll primitives
 

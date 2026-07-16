@@ -29,10 +29,12 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
   const router = useRouter();
   const [mealType, setMealType] = useState<MealType>("breakfast");
   const [logged, setLogged] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleLog() {
     startTransition(async () => {
+      setError(null);
       const res = await fetch("/api/diary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -46,6 +48,8 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
       if (res.ok) {
         setLogged(true);
         router.refresh();
+      } else {
+        setError(strings.common.genericError);
       }
     });
   }
@@ -82,6 +86,7 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
       {logged && (
         <p className="text-center text-xs text-muted-foreground">{strings.suggestionsScreen.logSuccess}</p>
       )}
+      {error && <p className="text-center text-xs text-destructive">{error}</p>}
     </div>
   );
 }

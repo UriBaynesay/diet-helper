@@ -70,6 +70,7 @@ export function GoalPanel({
   const [isPending, startTransition] = useTransition();
   const [isSaving, startSaving] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profileComplete) return;
@@ -94,6 +95,8 @@ export function GoalPanel({
 
   function handleSaveGoal() {
     startSaving(async () => {
+      setSaved(false);
+      setSaveError(null);
       const res = await fetch("/api/goals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -109,6 +112,8 @@ export function GoalPanel({
       if (res.ok) {
         setSaved(true);
         router.refresh();
+      } else {
+        setSaveError(strings.common.genericError);
       }
     });
   }
@@ -216,10 +221,13 @@ export function GoalPanel({
 
             <div className="flex flex-col gap-2">
               <Button onClick={handleSaveGoal} disabled={isSaving}>
-                {strings.bmiScreen.saveGoal}
+                {isSaving ? strings.common.saving : strings.bmiScreen.saveGoal}
               </Button>
               {saved && !isSaving && (
                 <p className="text-center text-xs text-muted-foreground">{strings.bmiScreen.goalSaved}</p>
+              )}
+              {saveError && (
+                <p className="text-center text-xs text-destructive">{saveError}</p>
               )}
             </div>
           </>
