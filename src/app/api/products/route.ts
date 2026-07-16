@@ -1,47 +1,18 @@
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { products, extractionJobs } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
 import { requireUser, UnauthenticatedError } from "@/lib/auth/require-user";
 import { productInputSchema, kcalSanityWarning } from "@/lib/products/schema";
-
-const FILTERS = ["all", "manual", "image", "ingested", "unverified"] as const;
-type Filter = (typeof FILTERS)[number];
-
-function isFilter(value: string | null): value is Filter {
-  return value !== null && (FILTERS as readonly string[]).includes(value);
-}
+import { getProducts, isProductFilter } from "@/lib/products/get-products";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get("q")?.trim();
-  const filterParam = searchParams.get("filter");
-  const filter: Filter = isFilter(filterParam) ? filterParam : "all";
+  const q = searchParams.get("q")?.trim() || undefined;
+  const filterParam = searchParams.get("filter") ?? undefined;
+  const filter = isProductFilter(filterParam) ? filterParam : "all";
 
-  const conditions = [isNull(products.archivedAt)];
-  if (filter === "manual" || filter === "image" || filter === "ingested") {
-    conditions.push(eq(products.source, filter));
-  } else if (filter === "unverified") {
-    conditions.push(eq(products.isVerified, false));
-  }
-
-  if (q) {
-    // pg_trgm similarity threshold; falls back to ILIKE-style substring match
-    // via the % operator's implicit index usage on products_name_trgm_idx.
-    conditions.push(sql`${products.name} % ${q}`);
-  }
-
-  const rows = await db
-    .select()
-    .from(products)
-    .where(and(...conditions))
-    .orderBy(
-      q
-        ? desc(sql`similarity(${products.name}, ${q})`)
-        : asc(products.name)
-    )
-    .limit(50);
-
+  const rows = await getProducts(q, filter);
   return apiData(rows);
 }
 
