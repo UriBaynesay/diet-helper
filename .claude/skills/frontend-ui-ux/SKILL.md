@@ -36,6 +36,14 @@ This app is Hebrew, RTL, and mobile-first. The owner uses it primarily on their 
 - Numbers/units that read left-to-right (grams, kcal, dates in ISO, phone numbers) must be wrapped in `<span dir="ltr">` so they don't get mirrored mid-sentence. See `formatAmount` in `MacroProgress` for the pattern.
 - Format dates via `Intl.DateTimeFormat('he-IL', ...)` (see `src/lib/format-date.ts`), never hand-built date strings.
 
+## Form field help text
+
+- If a field's label alone doesn't make its purpose or expected value obvious, add short help text — don't rely on the user to guess or ask. Rule of thumb: if you (the agent) had to explain what a field means after building it, that explanation belongs in the UI, not just in chat.
+- Default to an always-visible `text-muted-foreground` line under the field (or shadcn's form description pattern) — this works on every device, touch or not, and per the mobile-first rule above, nothing on a touchscreen can hover.
+- For a hint that's secondary/would clutter the form if always shown, use an info icon (`lucide-react`'s `Info` or `CircleHelp`) next to the label instead, revealed via `@media (hover: hover)` / Tailwind's `hover:` variant gated behind a hover-capable pointer — never `hover:`-only with no fallback, since that silently hides the hint on touch devices. Concretely: use shadcn's `Tooltip`/`Popover` (tap-to-open works on both touch and mouse via base-ui) rather than a raw CSS `:hover` reveal, so the same icon is tap-accessible on the phone and hover-accessible on desktop without separate code paths.
+- This came up concretely: the product form's "תיאור מנה" (serving description) field paired with "גודל מנה (גרם)" wasn't self-explanatory — it needed a one-line explanation of what a "serving" means and how it relates to the required per-100g macro fields. Fields that are optional/for-future-use (like a product's barcode, unused by any current flow) should say so, so the user doesn't wonder whether skipping them breaks something.
+- Keep help text in `strings.ts` like any other UI string — no inline Hebrew literals.
+
 ## Verifying on an actual phone
 
 The dev server binds to a virtual adapter by default and phones can't reach that — use the machine's real LAN IPv4 (`ipconfig` → the Wi-Fi adapter's IPv4, not the Docker/WSL one) and browse to `http://<that-ip>:3000` from a phone on the same Wi-Fi. Useful for catching real touch/viewport issues that browser resizing misses (safe-area insets, actual tap accuracy, on-screen keyboard covering inputs).

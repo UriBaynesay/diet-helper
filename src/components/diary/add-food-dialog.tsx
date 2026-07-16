@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FieldHint } from "@/components/field-hint";
 import { strings } from "@/lib/strings";
 
 type Product = {
@@ -127,7 +128,10 @@ export function AddFoodDialog({ date }: { date: string }) {
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="product-search">{strings.addFood.searchPlaceholder}</Label>
+            <Label htmlFor="product-search" className="items-center gap-1">
+              {strings.addFood.searchPlaceholder}
+              <FieldHint text={strings.addFood.searchHint} />
+            </Label>
             <Input
               id="product-search"
               value={query}
