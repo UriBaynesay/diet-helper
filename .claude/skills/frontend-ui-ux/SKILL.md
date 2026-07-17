@@ -57,3 +57,15 @@ This app is Hebrew, RTL, and mobile-first. The owner uses it primarily on their 
 ## Verifying on an actual phone
 
 The dev server binds to a virtual adapter by default and phones can't reach that — use the machine's real LAN IPv4 (`ipconfig` → the Wi-Fi adapter's IPv4, not the Docker/WSL one) and browse to `http://<that-ip>:3000` from a phone on the same Wi-Fi. Useful for catching real touch/viewport issues that browser resizing misses (safe-area insets, actual tap accuracy, on-screen keyboard covering inputs).
+
+**`npm run dev` does not work reliably on iOS Safari/Chrome over the LAN** — confirmed: buttons/dialogs render but silently don't respond to taps (nav links still work, since those need no JS), while the identical code in a production build over the same LAN IP on the same phone works correctly. Dev-mode-specific, likely Turbopack's HMR websocket failing silently on a non-localhost origin in WebKit. **Whenever mobile testing is needed, spin up a production build instead of dev mode:**
+
+```bash
+npm run build
+cp .env .next/standalone/.env
+cp -r public .next/standalone/public
+rm -rf .next/standalone/.next/static && cp -r .next/static .next/standalone/.next/static
+cd .next/standalone && node server.js
+```
+
+`next start` does not work with this project's `output: "standalone"` config — use `node .next/standalone/server.js` directly. Report the exact LAN URL (e.g. `http://192.168.x.x:3000`) to the user so they know where to test.
