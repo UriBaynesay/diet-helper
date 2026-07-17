@@ -1,54 +1,20 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyAccessJwt } from "@/lib/auth/jwks";
+import { verifySessionToken } from "@/lib/auth/session";
 import { lookupAuthorizedUser } from "@/lib/auth/user-cache";
-import {
-  CF_JWT_HEADER,
-  CF_ACCESS_COOKIE,
-  DEV_USER_EMAIL_HEADER,
-  DEV_USER_EMAIL_COOKIE,
-  USER_ID_HEADER,
-  USER_EMAIL_HEADER,
-} from "@/lib/auth/constants";
-
-async function resolveVerifiedEmail(request: NextRequest): Promise<string | null> {
-  const token =
-    request.headers.get(CF_JWT_HEADER) ?? request.cookies.get(CF_ACCESS_COOKIE)?.value;
-
-  if (token) {
-    try {
-      const payload = await verifyAccessJwt(token);
-      return typeof payload.email === "string" ? payload.email : null;
-    } catch {
-      return null;
-    }
-  }
-
-  // Dev-only bypass (no live Cloudflare tunnel/Access app for local testing).
-  // Gate on NODE_ENV first, not header/cookie presence, so a misconfigured
-  // prod env can't accept it. Header covers curl; cookie covers the browser
-  // (set by /login, since browsers don't let pages set arbitrary request
-  // headers on normal navigations).
-  if (process.env.NODE_ENV === "development") {
-    const devEmail =
-      request.headers.get(DEV_USER_EMAIL_HEADER) ??
-      request.cookies.get(DEV_USER_EMAIL_COOKIE)?.value;
-    if (devEmail) return devEmail;
-  }
-
-  return null;
-}
+import { SESSION_COOKIE, USER_ID_HEADER, USER_EMAIL_HEADER } from "@/lib/auth/constants";
 
 function isApiRequest(request: NextRequest): boolean {
   return request.nextUrl.pathname.startsWith("/api/");
 }
 
 export async function proxy(request: NextRequest) {
-  const email = await resolveVerifiedEmail(request);
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  const email = token ? await verifySessionToken(token) : null;
 
   // Build redirects from the Host header the client actually used, not
   // request.url/nextUrl — Next can normalize those to localhost even when
-  // the browser reached the server via a LAN IP (e.g. testing on a phone).
+  // the browser reached the server via a LAN IP or Tailscale address.
   const origin = `${request.nextUrl.protocol}//${request.headers.get("host") ?? request.nextUrl.host}`;
 
   if (!email) {
@@ -79,6 +45,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api/cron|api/health|api/dev-login|login|forbidden|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/cron|api/health|api/login|login|forbidden|_next/static|_next/image|favicon.ico).*)",
   ],
 };

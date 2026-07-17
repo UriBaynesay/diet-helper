@@ -1,10 +1,10 @@
 # diet-helper
 
-Personal Hebrew-RTL diet-tracking web app. Runs on the owner's PC, reachable from anywhere via a Cloudflare Tunnel behind Cloudflare Access. See `diet-helper-functional-spec.md` for the full product/technical spec.
+Personal Hebrew-RTL diet-tracking web app. Runs on the owner's PC; reachable on the local network directly, and remotely via [Tailscale](https://tailscale.com) (a private VPN between the owner's own devices — no public exposure, no domain required). See `diet-helper-functional-spec.md` for the full product/technical spec.
 
 ## Stack
 
-Next.js 16 (App Router) + TypeScript, PostgreSQL + Drizzle ORM, Tailwind CSS v4, Cloudflare Access (JWT) for auth, Docker Compose (app + Postgres + `cloudflared`).
+Next.js 16 (App Router) + TypeScript, PostgreSQL + Drizzle ORM, Tailwind CSS v4, a single shared password + signed session cookie for auth, Docker Compose (app + Postgres).
 
 ## Local development
 
@@ -29,15 +29,18 @@ Next.js 16 (App Router) + TypeScript, PostgreSQL + Drizzle ORM, Tailwind CSS v4,
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Auth in development
+## Auth
 
-Production auth is Cloudflare Access: `src/proxy.ts` verifies the `Cf-Access-Jwt-Assertion` JWT against Cloudflare's JWKS, then checks the verified email against the `users` allowlist table (`is_allowed = true`). There's no local Cloudflare Access app to test against during development, so `src/proxy.ts` has a **dev-only bypass**: when `NODE_ENV=development`, an `x-dev-user-email` header is trusted in place of a verified JWT. This path is hard-gated on `NODE_ENV` and never active in production.
+A single shared password protects the whole app — there's no per-user account system, matching the spec's single-owner model. `POST /api/login` (`src/app/api/login/route.ts`) checks the submitted password against `APP_PASSWORD`; on success it signs a session token (`src/lib/auth/session.ts`, `jose`/HS256, keyed by `SESSION_SECRET`) binding the session to `OWNER_EMAIL`, and sets it as an `httpOnly` cookie (30-day expiry). `src/proxy.ts` verifies that cookie's signature on every request — a hand-crafted cookie value is rejected (unlike the earlier dev-only bypass, which trusted an unsigned cookie/header outright). `POST /api/logout` clears the cookie.
 
 ```bash
-curl -H "x-dev-user-email: you@example.com" http://localhost:3000/api/whoami
+curl -c cookies.txt -X POST http://localhost:3000/api/login --data-urlencode "password=$APP_PASSWORD" --data-urlencode "from=/"
+curl -b cookies.txt http://localhost:3000/api/whoami
 ```
 
-The email must match a seeded, allowed user or you'll get a 403.
+The verified session email must match a seeded, allowed user (`users.is_allowed = true`) or you'll get a 403 — see the seed step above. `OWNER_EMAIL` is both the seed script's target and the identity every session is issued for, since this app has exactly one real user.
+
+**Previously (removed):** this app used to authenticate via Cloudflare Access (JWT verification against Cloudflare's JWKS, reachable through a Cloudflare Tunnel) with a `NODE_ENV`-gated dev bypass for local testing. That whole path — `cloudflared` in `docker-compose.yml`, `src/lib/auth/jwks.ts`, the `CF_ACCESS_*` env vars, `/api/dev-login` — was removed in favor of the simpler password+session model above, since the app is only ever accessed from the owner's own devices (LAN or Tailscale) and never needs to be genuinely public.
 
 ## Database / migrations
 
@@ -63,7 +66,7 @@ Products are shared across all users (no per-user filtering) — the library and
 | PATCH | `/api/products/:id` | Partial update |
 | POST | `/api/products/:id/archive` | Soft-delete |
 
-All routes require auth (same Cloudflare Access / dev-bypass flow as above). Requests and responses follow the app-wide `{ data }` / `{ error: { code, message } }` shape (`src/lib/api-response.ts`).
+All routes require auth (session cookie, see Auth above). Requests and responses follow the app-wide `{ data }` / `{ error: { code, message } }` shape (`src/lib/api-response.ts`).
 
 Validation (`src/lib/products/schema.ts`, Zod): all macros must be `>= 0`. A product's macros are also checked against its stated `kcalPer100g` (`4*protein + 4*carbs + 9*fat`) — a mismatch over 15% does **not** block the write, it returns `warning: "kcal_mismatch"` alongside the saved product so the caller can flag it for review instead of losing the data.
 
@@ -159,7 +162,7 @@ All BMI/BMR/TDEE/macro-split math is in `src/lib/profile/calculations.ts` as pur
 |---|---|---|
 | POST | `/api/cron/daily-summary` | Sends each eligible user their daily progress email |
 
-Guarded the same way as `/api/cron/ping` — `X-Cron-Secret` + rejection of any Cloudflare forwarding header (`src/lib/cron/guard.ts`), **not** Cloudflare Access. Iterates every user with `is_allowed = true AND notifications_enabled = true` (a user failing either check is excluded from the query entirely, not merely skipped).
+Guarded the same way as `/api/cron/ping` — `X-Cron-Secret` (`src/lib/cron/guard.ts`), not the session cookie. Iterates every user with `is_allowed = true AND notifications_enabled = true` (a user failing either check is excluded from the query entirely, not merely skipped).
 
 For each eligible user, "today" is resolved in *that user's* `timezone` via `Intl.DateTimeFormat` (`src/lib/notifications/timezone.ts`) — never the container's UTC clock — then the route attempts today's summary and, separately, yesterday's (**catch-up**, in case the PC was asleep at the scheduled time; never further back than one day). Each attempt is idempotent: `send-daily-summary.ts` checks `notification_logs` for an existing `status = 'sent'` row for that user/date first, and skips cleanly (no email, no duplicate log) if already sent, if the day has zero diary entries, or if there's no active goal for that date.
 
@@ -173,8 +176,10 @@ Verified via curl + live email delivery: calling the endpoint twice for the same
 
 See `.env.example` for the full list. Notes:
 - `DATABASE_URL` in `.env` is for host-side tooling (`npm run dev`, `db:migrate`, seed script). Inside `docker-compose.yml`, the `app` service overrides this to point at the `postgres` service hostname instead of `localhost`.
-- `CRON_SECRET` guards `/api/cron/*` routes — these are excluded from Cloudflare Access verification entirely (an OS scheduler calls them locally with no JWT) and are protected by this shared secret instead. The guard (`src/lib/cron/guard.ts`) also rejects any request carrying Cloudflare forwarding headers, so these routes can't be reached through the tunnel even with the correct secret.
-- `OWNER_EMAIL` is only read by `scripts/seed-owner.ts`, never by the app itself.
+- `APP_PASSWORD` is the app's one login password (see Auth above) — required at runtime by `src/lib/env.ts` as soon as any request hits `proxy.ts`.
+- `SESSION_SECRET` signs session cookies (`jose`/HS256) — generate a long random value, e.g. `openssl rand -base64 32`. Changing it invalidates every existing session (forces re-login everywhere).
+- `OWNER_EMAIL` is read both by `scripts/seed-owner.ts` (to seed the one allowed user row) and by `POST /api/login` (the identity every session is issued for).
+- `CRON_SECRET` guards `/api/cron/*` routes — these are excluded from the auth proxy's matcher entirely (an OS scheduler calls them locally with no session cookie) and are protected by this shared secret instead (`src/lib/cron/guard.ts`).
 - `GMAIL_USER`/`GMAIL_APP_PASSWORD` (a Gmail App Password, not the account password — requires 2-Step Verification) and `APP_URL` (used for the "open the app" link in the daily summary email) are required at runtime by `src/lib/env.ts` once the notifications cron route is hit.
 - `ANTHROPIC_API_KEY` is required at runtime by `src/lib/env.ts` once the image-extraction route (`/api/products/extract`) or the recipe-parse route (`/api/recipes/parse`) is hit.
 
@@ -184,7 +189,23 @@ See `.env.example` for the full list. Notes:
 docker compose up
 ```
 
-Starts `postgres`, `app` (migrates on boot, then serves), and `cloudflared` (requires a real `CLOUDFLARE_TUNNEL_TOKEN` — without one it will fail to connect, which is expected until a tunnel is provisioned in the Cloudflare dashboard).
+Starts `postgres` and `app` (migrates on boot, then serves on port 3000, published to the host). No tunnel service — reach the app via the host's LAN IP or Tailscale address directly.
+
+## Mobile / remote access
+
+The app has no public exposure by design — it's reachable only from devices on the same local network, or via [Tailscale](https://tailscale.com) (free, private VPN between your own devices; install it on the host PC and on your phone, sign into the same account on both, and the phone can reach the PC's Tailscale IP — e.g. `http://100.x.x.x:3000` — from anywhere with an internet connection, without exposing anything publicly).
+
+`npm run dev` does not work reliably on iOS Safari/Chrome when accessed over a non-`localhost` address (buttons/dialogs silently fail to respond — confirmed dev-mode-specific, likely Turbopack's HMR websocket; see the `frontend-ui-ux` skill). For real phone use, run a production build instead:
+
+```bash
+npm run build
+npm run start   # scripts/start-prod.sh — copies .env/public/.next/static into
+                 # .next/standalone/ (next build's own output doesn't include
+                 # them) and serves on PORT (default 3100, distinct from the
+                 # dev server's 3000 so both can run at once)
+```
+
+`next start` does not work with this project's `output: "standalone"` config (`next.config.ts`) — `scripts/start-prod.sh` runs `node .next/standalone/server.js` directly instead, which is what `npm run start` now wraps.
 
 ## Backups
 
@@ -220,13 +241,9 @@ The first UI screen (`src/app/page.tsx`) is the daily diary: date navigation, pe
 - `src/lib/diary/get-day.ts` — `getDiaryDay(userId, date)` is the single query path shared by `GET /api/diary` and the Today page, so there's no duplicate DB logic and no HTTP round-trip from the Server Component.
 - `src/components/diary/` — `DateNav` (client, RTL-flipped chevrons: "previous day" is a rightward chevron since the reading/timeline direction is flipped), `MacroProgress`, `EntryList` + `DeleteEntryButton`, `AddFoodDialog` (debounced product search → quantity/meal select → `POST /api/diary`).
 - Unauthenticated **page** requests now redirect to `/login?from=<path>` (`src/proxy.ts`); unauthenticated **API** requests still get a JSON 401/403, distinguished by whether the path starts with `/api/`.
-- Both `proxy.ts`'s redirect and `/api/dev-login`'s post-login redirect build the target URL from the request's `Host` header (not `request.url`/`request.nextUrl`, which Next can normalize to `localhost`) — otherwise logging in from a phone over the LAN IP bounces back to `localhost` instead of staying on the IP the phone actually used.
+- Both `proxy.ts`'s redirect and `/api/login`'s post-login redirect build the target URL from the request's `Host` header (not `request.url`/`request.nextUrl`, which Next can normalize to `localhost`) — otherwise logging in from a phone over the LAN IP/Tailscale address bounces back to `localhost` instead of staying on the address the phone actually used.
 
-### Dev-only login
-
-Cloudflare Access has no local equivalent to click through, so `/login` (`src/app/login/page.tsx`) renders a dev-only email form when `NODE_ENV=development`, posting to `POST /api/dev-login`. That route sets the `dev-user-email` cookie, which `proxy.ts` accepts as a dev bypass alongside the existing `x-dev-user-email` header (the header covers curl; the cookie covers real browser navigation, since browsers don't let pages set arbitrary request headers). Both paths are hard-gated on `NODE_ENV === "development"` and return 404/redirect-to-forbidden otherwise.
-
-To test on a phone: the dev server binds Next's printed "Network" address to a Docker/WSL virtual adapter, not your real LAN IP — find the actual IPv4 via `ipconfig` (Wi-Fi adapter) and browse to `http://<that-ip>:3000` from a device on the same Wi-Fi.
+To test on a phone: the dev server binds Next's printed "Network" address to a Docker/WSL virtual adapter, not your real LAN IP — find the actual IPv4 via `ipconfig` (Wi-Fi adapter) and browse to `http://<that-ip>:3000` from a device on the same Wi-Fi, or use the Tailscale address for remote access (see Mobile / remote access above).
 
 **Resolved: iOS dev-mode button unresponsiveness.** Earlier testing found that on iOS (Safari and Chrome, which shares Safari's WebKit engine there), pages rendered styled correctly but buttons/dialogs didn't respond, while plain `<a href>` nav links still worked — pointing to a hydration/JS-execution failure specific to `npm run dev` accessed over a LAN IP rather than `localhost`. Confirmed dev-mode-specific by testing a real `next build` standalone production server (no Turbopack, no HMR) over the same LAN IP on the same iPhone: buttons worked correctly. Root cause not pinned to the exact mechanism (Turbopack's dev-mode HMR websocket failing silently on a non-localhost origin in WebKit is the leading theory), but the practical takeaway is: **use a production build for real on-device testing**, not `npm run dev`, when testing over the LAN rather than on the same machine as the dev server. `next start` doesn't work with this project's `output: "standalone"` config (`next.config.ts`) — run `node .next/standalone/server.js` instead after copying `.env`, `public/`, and `.next/static` into `.next/standalone/` (the same steps `docker/Dockerfile`'s entrypoint already does for the real deployment).
 

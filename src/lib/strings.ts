@@ -11,9 +11,11 @@ export const strings = {
     unauthorized: "יש להתחבר כדי להמשיך",
     forbidden: "אין לך הרשאה לגשת לאפליקציה זו",
     loginTitle: "התחברות",
-    loginDevOnly: "מסך פיתוח בלבד — בייצור ההתחברות מתבצעת דרך Cloudflare Access.",
-    loginEmailLabel: "כתובת אימייל",
+    loginPrompt: "יש להזין את הסיסמה כדי להמשיך.",
+    loginPasswordLabel: "סיסמה",
+    loginInvalidPassword: "סיסמה שגויה.",
     loginSubmit: "התחברות",
+    logout: "התנתקות",
   },
   bmi: {
     disclaimer:
