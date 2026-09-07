@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: diet_helper
+      POSTGRES_USER: diet_helper
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # postgres:18+'s image manages a version-named subdirectory under
+      # /var/lib/postgresql itself (pg_ctlcluster-style layout) — mounting
+      # the volume there, not at .../data, is what 18+ actually expects
+      # (learned by hitting the image's own startup error).
+      - pgdata:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U diet_helper -d diet_helper"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
