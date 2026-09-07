@@ -1,4 +1,29 @@
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Every var from .env.example except DATABASE_URL, which must point
+      # at the "postgres" service hostname in here (not localhost:5432,
+      # which is what .env's host-side-dev value uses and which inside this
+      # container would mean the app container itself, not Postgres).
+      DATABASE_URL: postgresql://diet_helper:${POSTGRES_PASSWORD}@postgres:5432/diet_helper
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CRON_SECRET: ${CRON_SECRET}
+      GMAIL_USER: ${GMAIL_USER}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+      APP_URL: ${APP_URL}
+      APP_PASSWORD: ${APP_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET}
+      OWNER_EMAIL: ${OWNER_EMAIL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:18-alpine
     restart: unless-stopped

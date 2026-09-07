@@ -19,15 +19,19 @@ actual state and real limitations — not pre-planned.
 
 ## Current state
 
-- **Runs via** `npm run dev` (Turbopack) and, for production/mobile testing,
-  `npm run build && npm run start` (see `AGENTS.md` — dev mode is broken on
-  iOS Safari/Chrome over non-localhost addresses; the standalone prod build
-  is not).
-- **Postgres runs via `docker-compose.yml`, Postgres only — the app stays
-  native.** `docker compose up -d` starts just the database, published on
-  `localhost:5432`; the app (via `npm run dev`/`start`) connects to that
-  like any local Postgres, unaware it's a container. The app itself is
-  deliberately *not* containerized yet — see "Why Postgres-only" below.
+- **Fully containerized: `docker compose up -d --build` runs the whole
+  stack** — the app (built via `Dockerfile`, multi-stage) and Postgres,
+  networked together, app waiting on Postgres's real healthcheck before
+  starting. Published on `localhost:3000` (app) and `localhost:5432`
+  (Postgres, for direct DB access/tooling). Verified end to end: container
+  builds, both report healthy/ready, `GET /api/health` returns 200, full
+  test suite passes.
+- **Still runs natively too** — `npm run dev` (Turbopack) and
+  `npm run build && npm run start` remain valid, unchanged (see `AGENTS.md`
+  — dev mode is broken on iOS Safari/Chrome over non-localhost addresses;
+  the standalone prod build is not). Native dev's `DATABASE_URL`
+  (`localhost:5432`, from `.env`) still works against the same Postgres
+  container, since its port is still published to the host.
 - **A real scheduled task already exists in the code, unwired to any
   scheduler:** `POST /api/cron/daily-summary` sends each opted-in user their
   daily nutrition summary (per-user timezone, with one-day catch-up logic
@@ -39,24 +43,27 @@ actual state and real limitations — not pre-planned.
   app-level-scheduling question logged in the Infra Knowledge doc (in-process
   scheduler vs. systemd-as-alarm-clock).
 
-## Docker was removed, then Postgres-only was rebuilt deliberately
+## Docker was removed, then rebuilt deliberately in two steps
 
 This app arrived with a working `docker-compose.yml` (app + Postgres,
 health checks, volumes for uploads/backups) built independently, before this
 project's gradual/felt-limitation process existed. It was removed on move-in
 (commit "Remove Docker setup") rather than kept, because it wasn't arrived
-at through that process. Once "no database" became the actual felt
-limitation, `docker-compose.yml` was rebuilt from scratch (not copied from
-git history) — see the Infra Knowledge doc's Docker entry (Containers /
-Images / Mounts → Volumes / Compose subsections) for the concepts underlying
-every line of it.
+at through that process. It came back in two separate, deliberately-scoped
+steps rather than restored at once:
 
-- **Why Postgres-only, not the app too.** Containerizing the app is a
-  separate, materially bigger topic (Dockerfile, multi-stage build for
-  Next.js's standalone output, build-time vs. runtime env vars) and would
-  also require reworking the existing LAN/Tailscale mobile-testing workflow
-  in `AGENTS.md`. Deferred to its own future step with its own trigger —
-  don't bundle it in when a smaller, focused change solves the actual gap.
+1. **Postgres only**, once "no database" became the actual felt limitation
+   — rebuilt from scratch (not copied from git history). See the Infra
+   Knowledge doc's Docker entry (Containers / Images / Mounts → Volumes /
+   Compose / Networking Across Compose Projects subsections) for the
+   concepts underlying every line of it.
+2. **The app itself**, once running the full stack together became the
+   next real step — a multi-stage `Dockerfile` (builder stage: full
+   `node_modules`, runs `npm run build`; runner stage: only the pruned
+   `output: "standalone"` result) and an `app` service in
+   `docker-compose.yml` alongside `postgres`.
+
+Details worth remembering:
 - **The Postgres init script is restored**, rewritten with explanatory
   comments rather than copied verbatim: `docker/postgres/init/00_extensions.sql`
   enables `citext` (case-insensitive text — the users table's email column,
@@ -67,10 +74,19 @@ every line of it.
   image auto-runs, but **only on a brand-new, empty `pgdata` volume** — it
   will not re-run if edited later against an already-initialized database;
   that would need a manual `CREATE EXTENSION` or a fresh volume.
-- **`DATABASE_URL` in `.env`/`.env.example` already assumed this exact
-  shape** (`localhost:5432` for host-side dev, a comment noting the app
-  container would instead get `postgres:5432` if it ever joins this
-  compose file) — nothing needed to change there.
+- **`DATABASE_URL` differs between the two runtime contexts, deliberately.**
+  `.env`'s value (`localhost:5432`) is for host-side native dev.
+  `docker-compose.yml`'s `app` service overrides it via an explicit
+  `environment:` entry pointing at `postgres:5432` (the in-network
+  hostname) — inside a container, `localhost` would mean the app container
+  itself, not Postgres. Every other var is passed through from `.env` via
+  Compose's `${VAR}` substitution (no separate `.env.docker` file — that
+  option was considered and deliberately not used, since duplicating every
+  var into a second file is a real, recurring drift risk for the one value
+  that actually needs to differ).
+- **No secrets are baked into the image.** The build stage needs zero env
+  vars (verified by running the build with none present); all real config
+  is injected at container-start time via Compose, not during `docker build`.
 
 ## Guardrails specific to this app
 
