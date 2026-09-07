@@ -9,7 +9,11 @@ services:
       POSTGRES_USER: diet_helper
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # postgres:18+'s image manages a version-named subdirectory under
+      # /var/lib/postgresql itself (pg_ctlcluster-style layout) — mounting
+      # the volume there, not at .../data, is what 18+ actually expects
+      # (learned by hitting the image's own startup error).
+      - pgdata:/var/lib/postgresql
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U diet_helper -d diet_helper"]
