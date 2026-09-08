@@ -3,13 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { strings } from "@/lib/strings";
 
 const FILTERS = ["all", "manual", "image", "unverified"] as const;
@@ -46,8 +39,7 @@ export function ProductSearchBar({ q, filter }: { q: string; filter: Filter }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
-  function setFilter(next: Filter | null) {
-    if (!next) return;
+  function setFilter(next: Filter) {
     const params = new URLSearchParams(searchParams);
     if (next === "all") {
       params.delete("filter");
@@ -58,25 +50,41 @@ export function ProductSearchBar({ q, filter }: { q: string; filter: Filter }) {
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-col gap-2.5">
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={strings.products.searchPlaceholder}
-        className="flex-1"
+        className="rounded-xl"
       />
-      <Select value={filter} onValueChange={setFilter}>
-        <SelectTrigger>
-          <SelectValue>{FILTER_LABELS[filter]}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {FILTERS.map((f) => (
-            <SelectItem key={f} value={f}>
+      <div className="flex gap-1.5 overflow-x-auto">
+        {FILTERS.map((f) => {
+          const active = f === filter;
+          return (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFilter(f)}
+              className="shrink-0 rounded-full border px-3.5 py-1.5 text-[12.5px] font-semibold"
+              style={
+                active
+                  ? {
+                      borderColor: "var(--accent-coral)",
+                      background: "var(--accent-coral)",
+                      color: "white",
+                    }
+                  : {
+                      borderColor: "var(--border)",
+                      background: "var(--card)",
+                      color: "var(--ink-mid)",
+                    }
+              }
+            >
               {FILTER_LABELS[f]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -37,20 +37,34 @@ export function ArchiveProductButton({ productId }: { productId: string }) {
     <AlertDialog onOpenChange={(open) => open && setError(null)}>
       <AlertDialogTrigger
         render={
-          <Button variant="ghost" size="icon-sm" aria-label={strings.products.archive} disabled={isPending} />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={strings.products.archive}
+            disabled={isPending}
+            className="size-[30px] rounded-[10px]"
+            style={{ background: "var(--muted)" }}
+          />
         }
       >
-        <Archive className="size-3.5" />
+        <Archive className="size-3.5" style={{ color: "var(--destructive)" }} />
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className="rounded-[20px]">
         <AlertDialogHeader>
-          <AlertDialogTitle>{strings.products.archiveConfirmTitle}</AlertDialogTitle>
+          <AlertDialogTitle className="font-display">
+            {strings.products.archiveConfirmTitle}
+          </AlertDialogTitle>
           <AlertDialogDescription>{strings.products.archiveConfirmBody}</AlertDialogDescription>
         </AlertDialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <AlertDialogFooter>
-          <AlertDialogCancel>{strings.common.cancel}</AlertDialogCancel>
-          <AlertDialogAction onClick={handleArchive} disabled={isPending}>
+          <AlertDialogCancel className="rounded-xl">{strings.common.cancel}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleArchive}
+            disabled={isPending}
+            className="rounded-xl"
+            style={{ background: "var(--destructive)" }}
+          >
             {strings.products.archive}
           </AlertDialogAction>
         </AlertDialogFooter>
