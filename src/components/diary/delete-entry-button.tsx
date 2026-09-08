@@ -2,8 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 import { strings } from "@/lib/strings";
 
 export function DeleteEntryButton({ entryId }: { entryId: string; date: string }) {
@@ -23,17 +22,18 @@ export function DeleteEntryButton({ entryId }: { entryId: string; date: string }
   }
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex shrink-0 items-center gap-1.5">
       {error && <span className="text-xs text-destructive">{strings.common.genericError}</span>}
-      <Button
-        variant="ghost"
-        size="icon-sm"
+      <button
+        type="button"
         aria-label={strings.today.delete}
         disabled={isPending}
         onClick={handleDelete}
+        className="flex size-[26px] items-center justify-center rounded-full disabled:opacity-50"
+        style={{ background: "var(--muted)" }}
       >
-        <Trash2 className="size-3.5" />
-      </Button>
+        <X className="size-[11px]" strokeWidth={1.6} style={{ color: "var(--ink-muted)" }} />
+      </button>
     </div>
   );
 }
