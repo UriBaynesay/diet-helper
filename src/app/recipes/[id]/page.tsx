@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getRecipeDetail } from "@/lib/recipes/get-recipe-detail";
 import { strings } from "@/lib/strings";
-import { AppNav } from "@/components/app-nav";
+import { BottomNav } from "@/components/bottom-nav";
 import { RecipeFormDialog } from "@/components/recipes/recipe-form-dialog";
 import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,7 @@ export default async function RecipeDetailPage({
 
   return (
     <>
-      <AppNav active="recipes" />
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-32">
         <Link href="/recipes" className="text-sm text-muted-foreground">
           ← {strings.recipes.backToList}
         </Link>
@@ -48,7 +47,7 @@ export default async function RecipeDetailPage({
                 quantityG: i.quantityG,
               })),
             }}
-            trigger={<Button variant="outline" size="sm">{strings.common.save}</Button>}
+            trigger={<Button variant="outline" size="sm">{strings.recipes.editRecipe}</Button>}
           />
         </div>
 
@@ -117,6 +116,7 @@ export default async function RecipeDetailPage({
 
         <DeleteRecipeButton recipeId={recipe.id} />
       </main>
+      <BottomNav />
     </>
   );
 }

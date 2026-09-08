@@ -5,7 +5,7 @@ import { users, weightLogs } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { findActiveGoal } from "@/lib/goals/active-goal";
 import { strings } from "@/lib/strings";
-import { AppNav } from "@/components/app-nav";
+import { BottomNav } from "@/components/bottom-nav";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { GoalPanel } from "@/components/profile/goal-panel";
 
@@ -26,8 +26,7 @@ export default async function ProfilePage() {
 
   return (
     <>
-      <AppNav active="profile" />
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-32">
         <h1 className="text-xl font-semibold">{strings.profile.title}</h1>
 
         <ProfileForm
@@ -55,6 +54,7 @@ export default async function ProfilePage() {
           }
         />
       </main>
+      <BottomNav />
     </>
   );
 }

@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { getSuggestions } from "@/lib/suggestions/get-suggestions";
 import { todayIso } from "@/lib/format-date";
 import { strings } from "@/lib/strings";
-import { AppNav } from "@/components/app-nav";
+import { BottomNav } from "@/components/bottom-nav";
 import { SuggestionCard } from "@/components/suggestions/suggestion-card";
 
 export default async function SuggestionsPage() {
@@ -14,8 +14,7 @@ export default async function SuggestionsPage() {
 
   return (
     <>
-      <AppNav active="suggestions" />
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-32">
         <h1 className="text-xl font-semibold">{strings.suggestionsScreen.title}</h1>
 
         {!remaining ? (
@@ -46,6 +45,7 @@ export default async function SuggestionsPage() {
           </>
         )}
       </main>
+      <BottomNav />
     </>
   );
 }

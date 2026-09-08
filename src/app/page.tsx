@@ -7,7 +7,7 @@ import { DateNav } from "@/components/diary/date-nav";
 import { MacroProgress } from "@/components/diary/macro-progress";
 import { EntryList } from "@/components/diary/entry-list";
 import { AddFoodDialog } from "@/components/diary/add-food-dialog";
-import { AppNav } from "@/components/app-nav";
+import { BottomNav } from "@/components/bottom-nav";
 
 export default async function Home({
   searchParams,
@@ -24,8 +24,7 @@ export default async function Home({
 
   return (
     <>
-      <AppNav active="today" />
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 p-4">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 p-4 pb-32">
         <h1 className="text-xl font-semibold">{strings.today.title}</h1>
 
         <DateNav date={date} />
@@ -69,6 +68,7 @@ export default async function Home({
 
         <EntryList entries={entries} date={date} />
       </main>
+      <BottomNav />
     </>
   );
 }
