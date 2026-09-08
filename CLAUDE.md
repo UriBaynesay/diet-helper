@@ -32,6 +32,18 @@ actual state and real limitations — not pre-planned.
   the standalone prod build is not). Native dev's `DATABASE_URL`
   (`localhost:5432`, from `.env`) still works against the same Postgres
   container, since its port is still published to the host.
+- **A third way to run it: containerized dev mode with hot-reload,** via
+  `docker-compose.override.yml` + `Dockerfile.dev`. Plain `docker compose
+  up` automatically merges the override on top of the base file — no flag
+  needed — swapping just the `app` service's build/command/volumes for a
+  bind-mounted source tree running `npm run dev` inside the container,
+  instead of the frozen production build. Editing a file on the host is
+  reflected immediately, no rebuild. To skip the override and run the real
+  production-like build instead, name the base file explicitly:
+  `docker compose -f docker-compose.yml up -d --build`. See the Infra
+  Knowledge doc's Compose section for the full reasoning and a real
+  dev-mode gotcha hit while verifying this (Next's `<title>` metadata
+  lagging behind an otherwise-instant Fast Refresh).
 - **A real scheduled task already exists in the code, unwired to any
   scheduler:** `POST /api/cron/daily-summary` sends each opted-in user their
   daily nutrition summary (per-user timezone, with one-day catch-up logic
