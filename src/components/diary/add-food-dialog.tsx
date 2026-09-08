@@ -128,17 +128,16 @@ export function AddFoodDialog({ date }: { date: string }) {
     >
       <SheetTrigger
         render={
-          <button
-            type="button"
+          <Button
             aria-label={strings.today.addFood}
-            className="fixed bottom-28 start-5 z-30 flex size-14 items-center justify-center rounded-full text-white shadow-lg"
+            className="fixed bottom-28 start-5 z-30 size-14 rounded-full text-white shadow-lg"
             style={{
               background: "var(--accent-coral)",
               boxShadow: "0 8px 20px oklch(0.62 0.18 25 / 35%)",
             }}
           >
             <Plus className="size-6" strokeWidth={2.4} />
-          </button>
+          </Button>
         }
       />
       <SheetContent
@@ -153,14 +152,14 @@ export function AddFoodDialog({ date }: { date: string }) {
         {!selected ? (
           <div className="flex max-h-[82vh] flex-col">
             <div className="flex shrink-0 items-center justify-between p-4 pb-2">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setOpen(false)}
-                className="text-sm"
                 style={{ color: "var(--ink-muted)" }}
               >
                 {strings.common.cancel}
-              </button>
+              </Button>
               <p className="font-display text-[16px] font-bold">{strings.addFood.title}</p>
               <div className="w-10" />
             </div>
@@ -215,9 +214,9 @@ export function AddFoodDialog({ date }: { date: string }) {
         ) : (
           <div className="flex flex-col gap-5 overflow-y-auto p-4 pt-6 pb-8">
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setSelected(null)} className="p-1">
+              <Button variant="ghost" size="icon-sm" onClick={() => setSelected(null)}>
                 <ChevronLeft className="size-4 rtl:rotate-180" />
-              </button>
+              </Button>
               <p className="text-[15px] font-bold">{selected.name}</p>
             </div>
 
@@ -244,14 +243,14 @@ export function AddFoodDialog({ date }: { date: string }) {
                 {strings.addFood.quantityLabel}
               </p>
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   onClick={() => setQuantityG((q) => String(Math.max(1, Number(q || 0) - 10)))}
-                  className="flex size-10 items-center justify-center rounded-xl text-xl"
+                  className="size-10 rounded-xl text-xl"
                   style={{ background: "var(--muted)" }}
                 >
                   –
-                </button>
+                </Button>
                 <Input
                   id="quantity"
                   type="number"
@@ -262,14 +261,14 @@ export function AddFoodDialog({ date }: { date: string }) {
                   onChange={(e) => setQuantityG(e.target.value)}
                   className="font-display flex-1 border-0 bg-transparent text-center text-[22px] font-extrabold shadow-none"
                 />
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   onClick={() => setQuantityG((q) => String(Number(q || 0) + 10))}
-                  className="flex size-10 items-center justify-center rounded-xl text-xl"
+                  className="size-10 rounded-xl text-xl"
                   style={{ background: "var(--muted)" }}
                 >
                   +
-                </button>
+                </Button>
               </div>
             </div>
 
