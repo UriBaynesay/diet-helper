@@ -53,6 +53,7 @@ export const strings = {
     mealLabel: "ארוחה",
     noResults: "לא נמצאו תוצאות",
     submit: "הוספה",
+    addedToast: "נוסף ליומן בהצלחה",
   },
   nav: {
     today: "היום",
