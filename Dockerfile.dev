@@ -1,0 +1,23 @@
+# Dev-only image: runs `npm run dev` against a bind-mounted source tree
+# (see docker-compose.override.yml) instead of Dockerfile's multi-stage
+# production build. Single stage — there's nothing to prune here, the whole
+# point is having the full dependency tree and source present and live.
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Same npm-upgrade fix as the production Dockerfile — see its comment for
+# the full reasoning (node:20-alpine's bundled npm 10.8.2 mishandles
+# optionalDependencies platform validation during npm ci).
+RUN npm install -g npm@11.19.1
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Do NOT `COPY . .` here — the compose override bind-mounts the real source
+# over /app instead, so anything copied at build time would just be
+# immediately shadowed. Only package.json/package-lock.json are copied in,
+# so `npm ci` has something to install against before the bind mount exists.
+
+EXPOSE 3000
+CMD ["npm", "run", "dev"]

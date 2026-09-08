@@ -1,0 +1,25 @@
+# Dev-only overrides, merged automatically on top of docker-compose.yml by
+# plain `docker compose up` (Compose's built-in convention — no -f flag
+# needed). Only the `app` service differs for dev; postgres is untouched,
+# staying the single source of truth in the base file. To skip this and run
+# the real production-like build instead, name the base file explicitly:
+# `docker compose -f docker-compose.yml up`.
+#
+# See Infra Knowledge doc, Compose section, for the full reasoning: a built
+# image is a frozen snapshot with no live connection to host files, so this
+# swaps the app service for a bind-mounted source tree + `npm run dev`
+# instead, getting real hot-reload with no rebuild-per-edit.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+      # Anonymous volume: keeps the container's own (Linux) node_modules
+      # from being shadowed by the bind mount above, which would otherwise
+      # overlay the host's node_modules (built for Windows) into the
+      # container — packages with native binaries would fail.
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
