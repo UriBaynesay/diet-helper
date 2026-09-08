@@ -2,7 +2,6 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +56,7 @@ export function ExtractionFlow() {
   const [stage, setStage] = useState<Stage>("idle");
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
 
@@ -146,6 +146,7 @@ export function ExtractionFlow() {
   function handleConfirm() {
     if (!job) return;
     startTransition(async () => {
+      setWarning(null);
       const num = (s: string) => (s.trim() === "" ? undefined : Number(s));
       const str = (s: string) => (s.trim() === "" ? undefined : s.trim());
       const res = await fetch("/api/products", {
@@ -170,6 +171,16 @@ export function ExtractionFlow() {
         setError(strings.extraction.failed);
         return;
       }
+      const { data } = await res.json();
+      // Fixed: this previously always navigated away on any res.ok, silently
+      // dropping a kcal-sanity-mismatch warning the manual product form
+      // correctly surfaces (ProductFormDialog checks the same data.warning).
+      // Stay on the review step and show it instead of saving-and-leaving
+      // blind.
+      if (data.warning === "kcal_mismatch") {
+        setWarning(strings.products.kcalMismatchWarning);
+        return;
+      }
       setStage("saved");
       router.push("/products");
       router.refresh();
@@ -180,157 +191,179 @@ export function ExtractionFlow() {
     job?.parsed?.basis === "per_serving" && !job.parsed.serving_size_g && stage === "review";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{strings.extraction.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPTED_TYPES.join(",")}
-          className="hidden"
-          onChange={handleFileSelect}
+    <div
+      className="flex flex-col gap-4 rounded-[24px] border bg-card p-5"
+      style={{ borderColor: "var(--border)" }}
+    >
+      <p className="font-display text-[19px] font-extrabold">{strings.extraction.title}</p>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={ACCEPTED_TYPES.join(",")}
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
+      {previewUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={previewUrl}
+          alt=""
+          className="max-h-64 w-full rounded-2xl border object-contain"
+          style={{ borderColor: "var(--border)" }}
         />
+      )}
 
-        {previewUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewUrl}
-            alt=""
-            className="max-h-64 w-full rounded-lg border object-contain"
-          />
-        )}
+      {stage === "idle" && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+          className="rounded-xl"
+        >
+          {file ? strings.extraction.changeImage : strings.extraction.chooseImage}
+        </Button>
+      )}
 
-        {stage === "idle" && (
-          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-            {file ? strings.extraction.changeImage : strings.extraction.chooseImage}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {stage === "idle" && file && (
+        <Button
+          onClick={handleUpload}
+          disabled={isPending}
+          className="rounded-xl"
+          style={{ background: "var(--accent-coral)" }}
+        >
+          {strings.extraction.upload}
+        </Button>
+      )}
+
+      {(stage === "uploading" || stage === "polling") && (
+        <p className="text-center text-sm" style={{ color: "var(--ink-muted)" }}>
+          {stage === "uploading" ? strings.extraction.uploading : strings.extraction.processing}
+        </p>
+      )}
+
+      {stage === "review" && job?.status === "failed" && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-destructive">{job.error ?? strings.extraction.failed}</p>
+          <Button variant="outline" onClick={handleRetry} disabled={isPending} className="rounded-xl">
+            {strings.extraction.retry}
           </Button>
-        )}
+        </div>
+      )}
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-
-        {stage === "idle" && file && (
-          <Button onClick={handleUpload} disabled={isPending}>
-            {strings.extraction.upload}
-          </Button>
-        )}
-
-        {(stage === "uploading" || stage === "polling") && (
-          <p className="text-center text-sm text-muted-foreground">
-            {stage === "uploading" ? strings.extraction.uploading : strings.extraction.processing}
+      {stage === "review" && job?.status === "succeeded" && job.parsed && (
+        <div className="flex flex-col gap-3">
+          <p className="rounded-xl p-2.5 text-sm" style={{ background: "var(--muted)" }}>
+            {strings.extraction.reviewHint}{" "}
+            <span className="font-bold">{CONFIDENCE_LABELS[job.parsed.confidence]}</span>
           </p>
-        )}
 
-        {stage === "review" && job?.status === "failed" && (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-destructive">{job.error ?? strings.extraction.failed}</p>
-            <Button variant="outline" onClick={handleRetry} disabled={isPending}>
-              {strings.extraction.retry}
-            </Button>
-          </div>
-        )}
-
-        {stage === "review" && job?.status === "succeeded" && job.parsed && (
-          <div className="flex flex-col gap-3">
-            <p className="rounded-lg bg-muted/40 p-2 text-sm">
-              {strings.extraction.reviewHint}{" "}
-              <span className="font-medium">{CONFIDENCE_LABELS[job.parsed.confidence]}</span>
+          {needsServingSize && (
+            <p
+              className="rounded-xl p-2.5 text-sm"
+              style={{ background: "var(--unverified-bg)", color: "var(--unverified-fg)" }}
+            >
+              {strings.extraction.missingServingSize}
             </p>
+          )}
 
-            {needsServingSize && (
-              <p className="rounded-lg bg-amber-500/10 p-2 text-sm text-amber-700 dark:text-amber-400">
-                {strings.extraction.missingServingSize}
-              </p>
-            )}
+          {warning && (
+            <p
+              className="rounded-xl p-2.5 text-sm"
+              style={{ background: "var(--unverified-bg)", color: "var(--unverified-fg)" }}
+            >
+              {warning}
+            </p>
+          )}
 
-            <ReviewField label={strings.products.nameLabel} value={values.name} onChange={(v) => set("name", v)} />
-            <ReviewField label={strings.products.brandLabel} value={values.brand} onChange={(v) => set("brand", v)} />
-            <div className="grid grid-cols-2 gap-3">
-              <ReviewField
-                label={strings.products.servingLabelLabel}
-                value={values.servingLabel}
-                onChange={(v) => set("servingLabel", v)}
-              />
-              <ReviewField
-                label={strings.products.servingSizeGLabel}
-                value={values.servingSizeG}
-                onChange={(v) => set("servingSizeG", v)}
-                numeric
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <ReviewField
-                label={strings.products.kcalLabel}
-                value={values.kcalPer100g}
-                onChange={(v) => set("kcalPer100g", v)}
-                numeric
-              />
-              <ReviewField
-                label={strings.products.proteinLabel}
-                value={values.proteinPer100g}
-                onChange={(v) => set("proteinPer100g", v)}
-                numeric
-              />
-              <ReviewField
-                label={strings.products.carbsLabel}
-                value={values.carbsPer100g}
-                onChange={(v) => set("carbsPer100g", v)}
-                numeric
-              />
-              <ReviewField
-                label={strings.products.fatLabel}
-                value={values.fatPer100g}
-                onChange={(v) => set("fatPer100g", v)}
-                numeric
-              />
-              <ReviewField
-                label={strings.products.fiberLabel}
-                value={values.fiberPer100g}
-                onChange={(v) => set("fiberPer100g", v)}
-                numeric
-              />
-              <ReviewField
-                label={strings.products.sugarLabel}
-                value={values.sugarPer100g}
-                onChange={(v) => set("sugarPer100g", v)}
-                numeric
-              />
-              <ReviewField
-                label={strings.products.sodiumLabel}
-                value={values.sodiumMgPer100g}
-                onChange={(v) => set("sodiumMgPer100g", v)}
-                numeric
-              />
-            </div>
+          <ReviewField label={strings.products.nameLabel} value={values.name} onChange={(v) => set("name", v)} />
+          <ReviewField label={strings.products.brandLabel} value={values.brand} onChange={(v) => set("brand", v)} />
+          <div className="grid grid-cols-2 gap-2.5">
+            <ReviewField
+              label={strings.products.servingLabelLabel}
+              value={values.servingLabel}
+              onChange={(v) => set("servingLabel", v)}
+            />
+            <ReviewField
+              label={strings.products.servingSizeGLabel}
+              value={values.servingSizeG}
+              onChange={(v) => set("servingSizeG", v)}
+              numeric
+            />
           </div>
-        )}
-      </CardContent>
-      {stage === "review" && job?.status === "succeeded" && (
-        <CardFooter className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
+            <ReviewField
+              label={strings.products.kcalLabel}
+              value={values.kcalPer100g}
+              onChange={(v) => set("kcalPer100g", v)}
+              numeric
+            />
+            <ReviewField
+              label={strings.products.proteinLabel}
+              value={values.proteinPer100g}
+              onChange={(v) => set("proteinPer100g", v)}
+              numeric
+            />
+            <ReviewField
+              label={strings.products.carbsLabel}
+              value={values.carbsPer100g}
+              onChange={(v) => set("carbsPer100g", v)}
+              numeric
+            />
+            <ReviewField
+              label={strings.products.fatLabel}
+              value={values.fatPer100g}
+              onChange={(v) => set("fatPer100g", v)}
+              numeric
+            />
+            <ReviewField
+              label={strings.products.fiberLabel}
+              value={values.fiberPer100g}
+              onChange={(v) => set("fiberPer100g", v)}
+              numeric
+            />
+            <ReviewField
+              label={strings.products.sugarLabel}
+              value={values.sugarPer100g}
+              onChange={(v) => set("sugarPer100g", v)}
+              numeric
+            />
+            <ReviewField
+              label={strings.products.sodiumLabel}
+              value={values.sodiumMgPer100g}
+              onChange={(v) => set("sodiumMgPer100g", v)}
+              numeric
+            />
+          </div>
+
           <Button
             onClick={handleConfirm}
             disabled={!values.name?.trim() || isPending}
-            className="w-full"
+            className="mt-1 h-12 w-full rounded-2xl text-[15px] font-bold"
+            style={{ background: "var(--accent-coral)" }}
           >
             {strings.extraction.confirmAndSave}
           </Button>
           <Button
             variant="ghost"
-            className="w-full"
+            className="w-full rounded-xl"
             onClick={() => {
               setFile(null);
               setPreviewUrl(null);
               setJob(null);
               setValues({});
+              setWarning(null);
               setStage("idle");
             }}
           >
             {strings.extraction.startOver}
           </Button>
-        </CardFooter>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -347,12 +380,13 @@ function ReviewField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Label>{label}</Label>
+      <Label style={{ color: "var(--ink-muted)" }}>{label}</Label>
       <Input
         dir={numeric ? "ltr" : undefined}
         type={numeric ? "number" : "text"}
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
+        className="rounded-xl"
       />
     </div>
   );
