@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { getRecipes } from "@/lib/recipes/get-recipes";
 import { strings } from "@/lib/strings";
 import { Button } from "@/components/ui/button";
-import { AppNav } from "@/components/app-nav";
+import { BottomNav } from "@/components/bottom-nav";
 import { RecipeListItem } from "@/components/recipes/recipe-list-item";
 import { RecipeFormDialog } from "@/components/recipes/recipe-form-dialog";
 
@@ -16,8 +16,7 @@ export default async function RecipesPage() {
 
   return (
     <>
-      <AppNav active="recipes" />
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-32">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">{strings.recipes.title}</h1>
           <RecipeFormDialog
@@ -40,6 +39,7 @@ export default async function RecipesPage() {
           </div>
         )}
       </main>
+      <BottomNav />
     </>
   );
 }

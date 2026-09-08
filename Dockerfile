@@ -7,6 +7,18 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# node:20-alpine ships npm 10.8.2, which has a known bug validating
+# optionalDependencies platform combinations during `npm ci` — it can error
+# on entries for platforms nobody's installing on (e.g.
+# @esbuild/aix-ppc64) instead of skipping them, and started tripping this
+# repo's build the moment esbuild published a routine patch release.
+# Upgrading npm fixes the actual bug rather than pinning around one
+# version bump that happened to trigger it. `npm@latest` (v12) requires
+# Node >=22, incompatible with this image's Node 20 — 11.19.1 is the
+# newest release that still supports Node ^20.17.0, verified against its
+# published `engines` field before pinning.
+RUN npm install -g npm@11.19.1
+
 COPY package.json package-lock.json ./
 RUN npm ci
 

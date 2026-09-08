@@ -8,7 +8,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ProductSearchBar } from "@/components/products/product-search-bar";
 import { ProductFormDialog } from "@/components/products/product-form-dialog";
 import { ProductListItem } from "@/components/products/product-list-item";
-import { AppNav } from "@/components/app-nav";
+import { BottomNav } from "@/components/bottom-nav";
 
 export default async function ProductsPage({
   searchParams,
@@ -25,8 +25,7 @@ export default async function ProductsPage({
 
   return (
     <>
-      <AppNav active="products" />
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-32">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">{strings.products.title}</h1>
           <div className="flex gap-2">
@@ -60,6 +59,7 @@ export default async function ProductsPage({
           </div>
         )}
       </main>
+      <BottomNav />
     </>
   );
 }
