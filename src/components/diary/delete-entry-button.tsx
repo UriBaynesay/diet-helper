@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { strings } from "@/lib/strings";
 
 export function DeleteEntryButton({ entryId }: { entryId: string; date: string }) {
@@ -24,16 +25,16 @@ export function DeleteEntryButton({ entryId }: { entryId: string; date: string }
   return (
     <div className="flex shrink-0 items-center gap-1.5">
       {error && <span className="text-xs text-destructive">{strings.common.genericError}</span>}
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         aria-label={strings.today.delete}
         disabled={isPending}
         onClick={handleDelete}
-        className="flex size-[26px] items-center justify-center rounded-full disabled:opacity-50"
+        className="size-[26px] rounded-full"
         style={{ background: "var(--muted)" }}
       >
         <X className="size-[11px]" strokeWidth={1.6} style={{ color: "var(--ink-muted)" }} />
-      </button>
+      </Button>
     </div>
   );
 }
