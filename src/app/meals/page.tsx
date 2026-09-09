@@ -16,23 +16,28 @@ export default async function MealsPage() {
 
   return (
     <>
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-32">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-3 p-4 pb-32">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">{strings.meals.title}</h1>
+          <h1 className="font-display text-[26px] font-extrabold">{strings.meals.title}</h1>
           <MealFormDialog
             trigger={
-              <Button size="sm">
+              <Button
+                aria-label={strings.meals.addMeal}
+                className="size-9 rounded-xl text-white"
+                style={{ background: "var(--accent-coral)" }}
+              >
                 <Plus className="size-4" />
-                {strings.meals.addMeal}
               </Button>
             }
           />
         </div>
 
         {meals.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">{strings.meals.noResults}</p>
+          <p className="py-6 text-center text-sm" style={{ color: "var(--ink-muted)" }}>
+            {strings.meals.noResults}
+          </p>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2.5">
             {meals.map((meal) => (
               <MealListItem key={meal.id} meal={meal} />
             ))}

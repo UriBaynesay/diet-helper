@@ -38,19 +38,24 @@ export function DeleteMealButton({ mealId }: { mealId: string }) {
 
   return (
     <AlertDialog onOpenChange={(open) => open && setError(null)}>
-      <AlertDialogTrigger render={<Button variant="outline" disabled={isPending} />}>
+      <AlertDialogTrigger render={<Button variant="outline" disabled={isPending} className="rounded-xl" />}>
         <Trash2 className="size-4" />
         {strings.meals.deleteMeal}
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className="rounded-[20px]">
         <AlertDialogHeader>
-          <AlertDialogTitle>{strings.meals.deleteConfirmTitle}</AlertDialogTitle>
+          <AlertDialogTitle className="font-display">{strings.meals.deleteConfirmTitle}</AlertDialogTitle>
           <AlertDialogDescription>{strings.meals.deleteConfirmBody}</AlertDialogDescription>
         </AlertDialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <AlertDialogFooter>
-          <AlertDialogCancel>{strings.common.cancel}</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} disabled={isPending}>
+          <AlertDialogCancel className="rounded-xl">{strings.common.cancel}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={isPending}
+            className="rounded-xl"
+            style={{ background: "var(--destructive)" }}
+          >
             {strings.meals.deleteMeal}
           </AlertDialogAction>
         </AlertDialogFooter>
