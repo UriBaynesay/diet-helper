@@ -1,8 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { diaryEntries, recipes, recipeIngredients, recipeNutrition, products } from "@/db/schema";
+import { diaryEntries, meals, mealIngredients, products } from "@/db/schema";
 import { findActiveGoal } from "@/lib/goals/active-goal";
-import { buildCandidatesForRecipe, rankSuggestions } from "@/lib/suggestions/scorer";
+import { macrosForQuantity } from "@/lib/diary/macros";
+import { buildCandidateForMeal, rankSuggestions } from "@/lib/suggestions/scorer";
 
 function reasonText(
   candidate: { macros: { kcal: number; proteinG: number }; score: number },
@@ -41,32 +42,42 @@ export async function getSuggestions(userId: string, date: string) {
     fatG: Number(activeGoal.targetFatG) - consumed.fatG,
   };
 
-  const allRecipes = await db.select().from(recipes);
+  const allMeals = await db.select().from(meals);
 
   const candidates = [];
-  for (const recipe of allRecipes) {
+  for (const meal of allMeals) {
     const ingredients = await db
-      .select({ archivedAt: products.archivedAt })
-      .from(recipeIngredients)
-      .innerJoin(products, eq(recipeIngredients.productId, products.id))
-      .where(eq(recipeIngredients.recipeId, recipe.id));
+      .select({
+        archivedAt: products.archivedAt,
+        quantityG: mealIngredients.quantityG,
+        kcalPer100g: products.kcalPer100g,
+        proteinPer100g: products.proteinPer100g,
+        carbsPer100g: products.carbsPer100g,
+        fatPer100g: products.fatPer100g,
+      })
+      .from(mealIngredients)
+      .innerJoin(products, eq(mealIngredients.productId, products.id))
+      .where(eq(mealIngredients.mealId, meal.id));
 
-    if (ingredients.some((i) => i.archivedAt !== null)) continue;
+    if (ingredients.length === 0 || ingredients.some((i) => i.archivedAt !== null)) continue;
 
-    const [nutrition] = await db
-      .select()
-      .from(recipeNutrition)
-      .where(eq(recipeNutrition.recipeId, recipe.id));
-    if (!nutrition) continue;
+    // No stored/view nutrition — sum macrosForQuantity across ingredients,
+    // same primitive get-meal-detail.ts uses for the meal detail screen.
+    const totalMacros = ingredients.reduce(
+      (acc, ingredient) => {
+        const macros = macrosForQuantity(ingredient, Number(ingredient.quantityG));
+        return {
+          kcal: acc.kcal + macros.kcal,
+          proteinG: acc.proteinG + macros.proteinG,
+          carbsG: acc.carbsG + macros.carbsG,
+          fatG: acc.fatG + macros.fatG,
+        };
+      },
+      { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }
+    );
 
-    const perServing = {
-      kcal: Number(nutrition.kcalPerServing),
-      proteinG: Number(nutrition.proteinGPerServing),
-      carbsG: Number(nutrition.carbsGPerServing),
-      fatG: Number(nutrition.fatGPerServing),
-    };
-
-    candidates.push(...buildCandidatesForRecipe(recipe, perServing, remaining));
+    const candidate = buildCandidateForMeal(meal, totalMacros, remaining);
+    if (candidate) candidates.push(candidate);
   }
 
   const top = rankSuggestions(candidates, 5).map((candidate) => ({

@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { recipes, recipeIngredients, recipeNutrition } from "@/db/schema";
+import { meals, mealIngredients } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
 import { requireUser, UnauthenticatedError } from "@/lib/auth/require-user";
-import { recipeInputSchema } from "@/lib/recipes/schema";
-import { getRecipes } from "@/lib/recipes/get-recipes";
+import { mealInputSchema } from "@/lib/meals/schema";
+import { getMeals } from "@/lib/meals/get-meals";
+import { getMealDetail } from "@/lib/meals/get-meal-detail";
 
 export async function GET(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     throw error;
   }
 
-  const rows = await getRecipes();
+  const rows = await getMeals();
   return apiData(rows);
 }
 
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const parsed = recipeInputSchema.safeParse(body);
+  const parsed = mealInputSchema.safeParse(body);
   if (!parsed.success) {
     return apiError("validation_error", parsed.error.message, 400);
   }
@@ -46,32 +46,25 @@ export async function POST(request: Request) {
     return apiError("not_found", "One or more ingredient products not found", 404);
   }
 
-  const [recipe] = await db
-    .insert(recipes)
+  const [meal] = await db
+    .insert(meals)
     .values({
       createdBy: user.userId,
       name: input.name,
-      description: input.description,
-      servings: input.servings,
-      instructions: input.instructions,
-      prepMinutes: input.prepMinutes,
-      tags: input.tags,
-      imageUrl: input.imageUrl,
     })
     .returning();
 
-  await db.insert(recipeIngredients).values(
+  await db.insert(mealIngredients).values(
     input.ingredients.map((ingredient) => ({
-      recipeId: recipe.id,
+      mealId: meal.id,
       productId: ingredient.productId,
       quantityG: ingredient.quantityG.toString(),
     }))
   );
 
-  const [nutrition] = await db
-    .select()
-    .from(recipeNutrition)
-    .where(eq(recipeNutrition.recipeId, recipe.id));
+  // Compute total nutrition the same way get-meal-detail.ts does — sum
+  // macrosForQuantity across ingredients, no stored/view nutrition.
+  const detail = await getMealDetail(meal.id);
 
-  return apiData({ recipe, nutrition: nutrition ?? null }, { status: 201 });
+  return apiData({ meal, nutrition: detail?.nutrition ?? null }, { status: 201 });
 }

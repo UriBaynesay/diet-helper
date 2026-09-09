@@ -1,11 +1,12 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { diaryEntries, products, recipes, recipeNutrition } from "@/db/schema";
+import { diaryEntries, products, meals } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
 import { requireUser, UnauthenticatedError } from "@/lib/auth/require-user";
 import { diaryEntryInputSchema, isProductEntry } from "@/lib/diary/schema";
 import { macrosForQuantity } from "@/lib/diary/macros";
 import { getDiaryDay } from "@/lib/diary/get-day";
+import { getMealDetail } from "@/lib/meals/get-meal-detail";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -76,26 +77,19 @@ export async function POST(request: Request) {
     return apiData({ entry: row }, { status: 201 });
   }
 
-  const recipe = await db.query.recipes.findFirst({ where: eq(recipes.id, input.recipeId) });
-  if (!recipe) {
-    return apiError("not_found", "Recipe not found", 404);
+  const meal = await db.query.meals.findFirst({ where: eq(meals.id, input.mealId) });
+  if (!meal) {
+    return apiError("not_found", "Meal not found", 404);
   }
 
-  const [nutrition] = await db
-    .select()
-    .from(recipeNutrition)
-    .where(eq(recipeNutrition.recipeId, input.recipeId));
-  if (!nutrition) {
-    return apiError("not_found", "Recipe nutrition unavailable", 404);
+  // No per-serving scaling — a meal has one fixed total, the literal sum of
+  // its ingredients (get-meal-detail.ts's nutrition computation, reused
+  // here rather than duplicated).
+  const detail = await getMealDetail(input.mealId);
+  if (!detail) {
+    return apiError("not_found", "Meal not found", 404);
   }
-
-  const factor = input.servings;
-  const macros = {
-    kcal: Number(nutrition.kcalPerServing) * factor,
-    proteinG: Number(nutrition.proteinGPerServing) * factor,
-    carbsG: Number(nutrition.carbsGPerServing) * factor,
-    fatG: Number(nutrition.fatGPerServing) * factor,
-  };
+  const macros = detail.nutrition;
 
   const [row] = await db
     .insert(diaryEntries)
@@ -103,8 +97,7 @@ export async function POST(request: Request) {
       userId: user.userId,
       entryDate: new Date(input.entryDate),
       mealType: input.mealType,
-      recipeId: input.recipeId,
-      servings: input.servings.toString(),
+      mealId: input.mealId,
       kcal: macros.kcal.toString(),
       proteinG: macros.proteinG.toString(),
       carbsG: macros.carbsG.toString(),

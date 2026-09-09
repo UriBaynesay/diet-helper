@@ -71,6 +71,20 @@
       "when": 1784227678671,
       "tag": "0009_previous_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788895084756,
+      "tag": "0010_drop_recipes",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788895227147,
+      "tag": "0011_add_meals",
+      "breakpoints": true
     }
   ]
 }

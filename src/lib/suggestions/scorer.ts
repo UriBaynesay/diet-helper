@@ -3,9 +3,9 @@ export type Macros = { kcal: number; proteinG: number; carbsG: number; fatG: num
 const WEIGHTS = { kcal: 1.5, proteinG: 2.0, carbsG: 1.0, fatG: 1.0 };
 
 /**
- * Lower is better. Each term is the relative deviation of a recipe-serving's
- * macro from what's remaining today, weighted by how much that macro matters
- * (protein weighted hardest — it's the one people actually miss).
+ * Lower is better. Each term is the relative deviation of a meal's total
+ * macros from what's remaining today, weighted by how much that macro
+ * matters (protein weighted hardest — it's the one people actually miss).
  */
 export function scoreServing(serving: Macros, remaining: Macros): number {
   const kcalTerm = (WEIGHTS.kcal * Math.abs(serving.kcal - remaining.kcal)) / Math.max(remaining.kcal, 1);
@@ -19,15 +19,6 @@ export function scoreServing(serving: Macros, remaining: Macros): number {
   return kcalTerm + proteinTerm + carbsTerm + fatTerm;
 }
 
-export function scaleServing(perServing: Macros, multiplier: number): Macros {
-  return {
-    kcal: perServing.kcal * multiplier,
-    proteinG: perServing.proteinG * multiplier,
-    carbsG: perServing.carbsG * multiplier,
-    fatG: perServing.fatG * multiplier,
-  };
-}
-
 /** Excludes candidates whose kcal exceeds remaining kcal by more than 20%. */
 export function isWithinKcalLimit(servingKcal: number, remainingKcal: number): boolean {
   if (remainingKcal <= 0) return servingKcal <= 200;
@@ -35,36 +26,31 @@ export function isWithinKcalLimit(servingKcal: number, remainingKcal: number): b
 }
 
 export type SuggestionCandidate = {
-  recipeId: string;
-  recipeName: string;
-  servingsMultiplier: number;
+  mealId: string;
+  mealName: string;
   macros: Macros;
   score: number;
 };
 
 /**
- * Builds the ranked candidate list for one recipe's base per-serving
- * nutrition against today's remaining macros — half, single, and double
- * servings are scored as separate candidates, then hard-filtered on kcal.
+ * A meal has exactly one fixed total (no servings to scale) — so there's at
+ * most one candidate per meal, not a set of half/single/double-serving
+ * variants the way a recipe's per-serving nutrition used to produce.
+ * Returns null if the meal's total exceeds the kcal limit against what's
+ * remaining today.
  */
-export function buildCandidatesForRecipe(
-  recipe: { id: string; name: string },
-  perServing: Macros,
+export function buildCandidateForMeal(
+  meal: { id: string; name: string },
+  totalMacros: Macros,
   remaining: Macros
-): SuggestionCandidate[] {
-  const multipliers = [0.5, 1, 2];
-  return multipliers
-    .map((multiplier) => {
-      const macros = scaleServing(perServing, multiplier);
-      return {
-        recipeId: recipe.id,
-        recipeName: recipe.name,
-        servingsMultiplier: multiplier,
-        macros,
-        score: scoreServing(macros, remaining),
-      };
-    })
-    .filter((candidate) => isWithinKcalLimit(candidate.macros.kcal, remaining.kcal));
+): SuggestionCandidate | null {
+  if (!isWithinKcalLimit(totalMacros.kcal, remaining.kcal)) return null;
+  return {
+    mealId: meal.id,
+    mealName: meal.name,
+    macros: totalMacros,
+    score: scoreServing(totalMacros, remaining),
+  };
 }
 
 export function rankSuggestions(

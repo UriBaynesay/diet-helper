@@ -37,11 +37,11 @@ export function EntryList({ entries, date: _date }: { entries: DiaryDayEntry[]; 
                 >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[14.5px] font-semibold">{entry.name}</div>
-                    <div dir="ltr" className="mt-0.5 text-xs" style={{ color: "var(--ink-muted)" }}>
-                      {entry.quantityG
-                        ? `${Math.round(Number(entry.quantityG))} g`
-                        : `${entry.servings} servings`}
-                    </div>
+                    {entry.quantityG && (
+                      <div dir="ltr" className="mt-0.5 text-xs" style={{ color: "var(--ink-muted)" }}>
+                        {Math.round(Number(entry.quantityG))} g
+                      </div>
+                    )}
                   </div>
                   <div
                     dir="ltr"

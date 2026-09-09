@@ -16,26 +16,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { FieldHint } from "@/components/field-hint";
-import { IngredientRow, type IngredientRowValue } from "@/components/recipes/ingredient-row";
+import { IngredientRow, type IngredientRowValue } from "@/components/meals/ingredient-row";
 import { strings } from "@/lib/strings";
 
-export type RecipeFormValues = {
+export type MealFormValues = {
   name: string;
-  description: string;
-  servings: string;
-  prepMinutes: string;
-  instructions: string;
-  tags: string;
   ingredients: IngredientRowValue[];
 };
 
-const EMPTY_VALUES: RecipeFormValues = {
+const EMPTY_VALUES: MealFormValues = {
   name: "",
-  description: "",
-  servings: "1",
-  prepMinutes: "",
-  instructions: "",
-  tags: "",
   ingredients: [],
 };
 
@@ -45,20 +35,9 @@ function newIngredient(): IngredientRowValue {
   return { key: `new-${keyCounter}`, productId: "", productName: "", quantityG: "" };
 }
 
-function toPayload(values: RecipeFormValues) {
-  const str = (s: string) => (s.trim() === "" ? undefined : s.trim());
+function toPayload(values: MealFormValues) {
   return {
     name: values.name.trim(),
-    description: str(values.description) ?? null,
-    servings: Number(values.servings),
-    prepMinutes: values.prepMinutes.trim() ? Number(values.prepMinutes) : null,
-    instructions: str(values.instructions) ?? null,
-    tags: values.tags.trim()
-      ? values.tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean)
-      : null,
     ingredients: values.ingredients
       .filter((i) => i.productId && i.quantityG.trim())
       .map((i) => ({ productId: i.productId, quantityG: Number(i.quantityG) })),
@@ -74,10 +53,6 @@ type ParsedIngredient = {
 
 type ParseResult = {
   name: string | null;
-  description: string | null;
-  servings: number | null;
-  prepMinutes: number | null;
-  instructions: string | null;
   ingredients: ParsedIngredient[];
 };
 
@@ -86,21 +61,21 @@ function ingredientLineText(i: ParsedIngredient): string {
   return parts.join(" ");
 }
 
-export function RecipeFormDialog({
+export function MealFormDialog({
   trigger,
-  recipeId,
+  mealId,
   initialValues,
 }: {
   trigger: ReactNode;
-  recipeId?: string;
-  initialValues?: RecipeFormValues;
+  mealId?: string;
+  initialValues?: MealFormValues;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"manual" | "paste">("manual");
   const [pasteText, setPasteText] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
-  const [values, setValues] = useState<RecipeFormValues>(initialValues ?? EMPTY_VALUES);
+  const [values, setValues] = useState<MealFormValues>(initialValues ?? EMPTY_VALUES);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isParsing, startParsing] = useTransition();
@@ -124,7 +99,7 @@ export function RecipeFormDialog({
     if (!pasteText.trim()) return;
     startParsing(async () => {
       setParseError(null);
-      const res = await fetch("/api/recipes/parse", {
+      const res = await fetch("/api/meals/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: pasteText }),
@@ -138,11 +113,6 @@ export function RecipeFormDialog({
 
       setValues({
         name: parsed.name ?? "",
-        description: parsed.description ?? "",
-        servings: parsed.servings?.toString() ?? "1",
-        prepMinutes: parsed.prepMinutes?.toString() ?? "",
-        instructions: parsed.instructions ?? "",
-        tags: "",
         // Every parsed ingredient starts fully unmatched — productId is
         // deliberately empty. The model never sees the product library, so
         // it can't and shouldn't guess a match; the user resolves each one
@@ -167,8 +137,8 @@ export function RecipeFormDialog({
     if (!payload.name || payload.ingredients.length === 0) return;
 
     startTransition(async () => {
-      const res = await fetch(recipeId ? `/api/recipes/${recipeId}` : "/api/recipes", {
-        method: recipeId ? "PATCH" : "POST",
+      const res = await fetch(mealId ? `/api/meals/${mealId}` : "/api/meals", {
+        method: mealId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -176,14 +146,14 @@ export function RecipeFormDialog({
         const { error: err } = await res.json();
         setError(
           err?.code === "not_found"
-            ? strings.recipes.productNotFoundError
+            ? strings.meals.productNotFoundError
             : strings.common.genericError
         );
         return;
       }
       setOpen(false);
       setError(null);
-      if (!recipeId) {
+      if (!mealId) {
         setValues(EMPTY_VALUES);
         setPasteText("");
         setMode("manual");
@@ -201,7 +171,7 @@ export function RecipeFormDialog({
       onOpenChange={(next) => {
         setOpen(next);
         if (next) setError(null);
-        if (next && !recipeId) {
+        if (next && !mealId) {
           setValues(EMPTY_VALUES);
           setPasteText("");
           setParseError(null);
@@ -212,12 +182,10 @@ export function RecipeFormDialog({
       <DialogTrigger render={trigger as React.ReactElement} />
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {recipeId ? strings.recipes.editRecipe : strings.recipes.newRecipe}
-          </DialogTitle>
+          <DialogTitle>{mealId ? strings.meals.editMeal : strings.meals.newMeal}</DialogTitle>
         </DialogHeader>
 
-        {!recipeId && (
+        {!mealId && (
           <div className="flex gap-2">
             <Button
               type="button"
@@ -225,7 +193,7 @@ export function RecipeFormDialog({
               variant={mode === "manual" ? "default" : "outline"}
               onClick={() => setMode("manual")}
             >
-              {strings.recipes.modeManual}
+              {strings.meals.modeManual}
             </Button>
             <Button
               type="button"
@@ -233,34 +201,34 @@ export function RecipeFormDialog({
               variant={mode === "paste" ? "default" : "outline"}
               onClick={() => setMode("paste")}
             >
-              {strings.recipes.modePaste}
+              {strings.meals.modePaste}
             </Button>
           </div>
         )}
 
-        {mode === "paste" && !recipeId ? (
+        {mode === "paste" && !mealId ? (
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <Label className="items-center gap-1">
-                {strings.recipes.pasteLabel}
-                <FieldHint text={strings.recipes.pasteHint} />
+                {strings.meals.pasteLabel}
+                <FieldHint text={strings.meals.pasteHint} />
               </Label>
               <Textarea
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
-                placeholder={strings.recipes.pastePlaceholder}
+                placeholder={strings.meals.pastePlaceholder}
                 rows={10}
               />
             </div>
             {parseError && <p className="text-sm text-destructive">{parseError}</p>}
             <Button onClick={handleParse} disabled={!pasteText.trim() || isParsing}>
-              {isParsing ? strings.extraction.processing : strings.recipes.parseButton}
+              {isParsing ? strings.extraction.processing : strings.meals.parseButton}
             </Button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label>{strings.recipes.nameLabel}</Label>
+              <Label>{strings.meals.nameLabel}</Label>
               <Input
                 value={values.name}
                 onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
@@ -268,64 +236,14 @@ export function RecipeFormDialog({
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label>{strings.recipes.descriptionLabel}</Label>
-              <Textarea
-                value={values.description}
-                onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))}
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label>{strings.recipes.servingsLabel}</Label>
-                <Input
-                  dir="ltr"
-                  type="number"
-                  value={values.servings}
-                  onChange={(e) => setValues((v) => ({ ...v, servings: e.target.value }))}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>{strings.recipes.prepMinutesLabel}</Label>
-                <Input
-                  dir="ltr"
-                  type="number"
-                  value={values.prepMinutes}
-                  onChange={(e) => setValues((v) => ({ ...v, prepMinutes: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label>{strings.recipes.instructionsLabel}</Label>
-              <Textarea
-                value={values.instructions}
-                onChange={(e) => setValues((v) => ({ ...v, instructions: e.target.value }))}
-                rows={5}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label className="items-center gap-1">
-                {strings.recipes.tagsLabel}
-                <FieldHint text={strings.recipes.tagsHint} />
-              </Label>
-              <Input
-                value={values.tags}
-                onChange={(e) => setValues((v) => ({ ...v, tags: e.target.value }))}
-              />
-            </div>
-
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-1">
-                <Label>{strings.recipes.ingredientsLabel}</Label>
-                <FieldHint text={strings.recipes.ingredientsHint} />
+                <Label>{strings.meals.ingredientsLabel}</Label>
+                <FieldHint text={strings.meals.ingredientsHint} />
               </div>
               {hasUnmatchedIngredient && (
                 <p className="text-sm text-amber-700 dark:text-amber-400">
-                  {strings.recipes.parsedIngredientsNotice}
+                  {strings.meals.parsedIngredientsNotice}
                 </p>
               )}
               {values.ingredients.map((ingredient) => (
@@ -338,7 +256,7 @@ export function RecipeFormDialog({
               ))}
               <Button type="button" variant="outline" size="sm" onClick={addIngredient}>
                 <Plus className="size-4" />
-                {strings.recipes.addIngredient}
+                {strings.meals.addIngredient}
               </Button>
             </div>
 
@@ -348,13 +266,13 @@ export function RecipeFormDialog({
           </div>
         )}
 
-        {(mode === "manual" || recipeId) && (
+        {(mode === "manual" || mealId) && (
           <DialogFooter>
             <Button
               onClick={handleSubmit}
               disabled={!values.name.trim() || !hasValidIngredient || isPending}
             >
-              {isPending ? strings.common.saving : strings.recipes.submit}
+              {isPending ? strings.common.saving : strings.meals.submit}
             </Button>
           </DialogFooter>
         )}

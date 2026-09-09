@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { recipes, recipeIngredients, recipeNutrition } from "@/db/schema";
+import { meals, mealIngredients, diaryEntries } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
 import { requireUser, UnauthenticatedError } from "@/lib/auth/require-user";
-import { recipeUpdateSchema } from "@/lib/recipes/schema";
+import { mealUpdateSchema } from "@/lib/meals/schema";
+import { getMealDetail } from "@/lib/meals/get-meal-detail";
 
 export async function GET(
   request: Request,
@@ -19,21 +20,12 @@ export async function GET(
   }
 
   const { id } = await params;
-  const recipe = await db.query.recipes.findFirst({ where: eq(recipes.id, id) });
-  if (!recipe) {
-    return apiError("not_found", "Recipe not found", 404);
+  const detail = await getMealDetail(id);
+  if (!detail) {
+    return apiError("not_found", "Meal not found", 404);
   }
 
-  const ingredients = await db
-    .select()
-    .from(recipeIngredients)
-    .where(eq(recipeIngredients.recipeId, id));
-  const [nutrition] = await db
-    .select()
-    .from(recipeNutrition)
-    .where(eq(recipeNutrition.recipeId, id));
-
-  return apiData({ recipe, ingredients, nutrition: nutrition ?? null });
+  return apiData(detail);
 }
 
 export async function PATCH(
@@ -51,15 +43,15 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const parsed = recipeUpdateSchema.safeParse(body);
+  const parsed = mealUpdateSchema.safeParse(body);
   if (!parsed.success) {
     return apiError("validation_error", parsed.error.message, 400);
   }
   const input = parsed.data;
 
-  const existing = await db.query.recipes.findFirst({ where: eq(recipes.id, id) });
+  const existing = await db.query.meals.findFirst({ where: eq(meals.id, id) });
   if (!existing) {
-    return apiError("not_found", "Recipe not found", 404);
+    return apiError("not_found", "Meal not found", 404);
   }
 
   if (input.ingredients) {
@@ -71,32 +63,26 @@ export async function PATCH(
       return apiError("not_found", "One or more ingredient products not found", 404);
     }
 
-    await db.delete(recipeIngredients).where(eq(recipeIngredients.recipeId, id));
-    await db.insert(recipeIngredients).values(
+    await db.delete(mealIngredients).where(eq(mealIngredients.mealId, id));
+    await db.insert(mealIngredients).values(
       input.ingredients.map((ingredient) => ({
-        recipeId: id,
+        mealId: id,
         productId: ingredient.productId,
         quantityG: ingredient.quantityG.toString(),
       }))
     );
   }
 
-  const [recipe] = await db
-    .update(recipes)
+  const [meal] = await db
+    .update(meals)
     .set({
       name: input.name,
-      description: input.description,
-      servings: input.servings,
-      instructions: input.instructions,
-      prepMinutes: input.prepMinutes,
-      tags: input.tags,
-      imageUrl: input.imageUrl,
       updatedAt: new Date(),
     })
-    .where(eq(recipes.id, id))
+    .where(eq(meals.id, id))
     .returning();
 
-  return apiData({ recipe });
+  return apiData({ meal });
 }
 
 export async function DELETE(
@@ -113,17 +99,22 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const existing = await db.query.recipes.findFirst({ where: eq(recipes.id, id) });
+  const existing = await db.query.meals.findFirst({ where: eq(meals.id, id) });
   if (!existing) {
-    return apiError("not_found", "Recipe not found", 404);
+    return apiError("not_found", "Meal not found", 404);
   }
 
-  try {
-    await db.delete(recipes).where(eq(recipes.id, id));
-  } catch {
-    // FK constraint from diary_entries.recipe_id blocks this — same
-    // "can't remove what's referenced" rule the spec applies to products.
-    return apiError("in_use", "Recipe is logged in a diary entry and can't be deleted", 409);
+  // Explicit precheck rather than attempt-delete-and-catch-any-error: more
+  // correct than the prior recipes route's blanket try/catch, which would
+  // have translated any DB error during the delete (not just the specific
+  // FK violation) into a false "in use" report.
+  const referencingEntry = await db.query.diaryEntries.findFirst({
+    where: eq(diaryEntries.mealId, id),
+  });
+  if (referencingEntry) {
+    return apiError("in_use", "Meal is logged in a diary entry and can't be deleted", 409);
   }
+
+  await db.delete(meals).where(eq(meals.id, id));
   return apiData({ deleted: true });
 }

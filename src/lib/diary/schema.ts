@@ -9,22 +9,21 @@ const productEntrySchema = z.object({
   mealType: z.enum(mealTypes),
   productId: z.uuid(),
   quantityG: z.coerce.number().positive(),
-  recipeId: z.undefined().optional(),
+  mealId: z.undefined().optional(),
 });
 
-const recipeEntrySchema = z.object({
+const mealEntrySchema = z.object({
   entryDate: dateOnly,
   mealType: z.enum(mealTypes),
-  recipeId: z.uuid(),
-  servings: z.coerce.number().positive(),
+  mealId: z.uuid(),
   productId: z.undefined().optional(),
 });
 
-// Mirrors the DB's exactly-one-of-product_id/recipe_id CHECK constraint.
-export const diaryEntryInputSchema = z.union([productEntrySchema, recipeEntrySchema]);
+// Mirrors the DB's exactly-one-of-product_id/meal_id CHECK constraint.
+export const diaryEntryInputSchema = z.union([productEntrySchema, mealEntrySchema]);
 
 export type ProductDiaryEntryInput = z.infer<typeof productEntrySchema>;
-export type RecipeDiaryEntryInput = z.infer<typeof recipeEntrySchema>;
+export type MealDiaryEntryInput = z.infer<typeof mealEntrySchema>;
 export type DiaryEntryInput = z.infer<typeof diaryEntryInputSchema>;
 
 export function isProductEntry(input: DiaryEntryInput): input is ProductDiaryEntryInput {

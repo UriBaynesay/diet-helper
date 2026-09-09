@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   scoreServing,
   isWithinKcalLimit,
-  buildCandidatesForRecipe,
+  buildCandidateForMeal,
   rankSuggestions,
 } from "./scorer";
 
 describe("scoreServing", () => {
   it("scores a closer macro match lower than a worse one (spec acceptance criterion)", () => {
-    // 600 kcal / 45g protein remaining; a 550/42 recipe should outrank a 550/10 one.
+    // 600 kcal / 45g protein remaining; a 550/42 meal should outrank a 550/10 one.
     const remaining = { kcal: 600, proteinG: 45, carbsG: 60, fatG: 20 };
     const goodMatch = scoreServing({ kcal: 550, proteinG: 42, carbsG: 55, fatG: 18 }, remaining);
     const badMatch = scoreServing({ kcal: 550, proteinG: 10, carbsG: 55, fatG: 18 }, remaining);
@@ -22,8 +22,8 @@ describe("scoreServing", () => {
 });
 
 describe("isWithinKcalLimit", () => {
-  it("excludes a serving needing more than 20% over remaining kcal", () => {
-    // A recipe serving needing 3x the remaining calories never appears.
+  it("excludes a meal needing more than 20% over remaining kcal", () => {
+    // A meal needing 3x the remaining calories never appears.
     expect(isWithinKcalLimit(1800, 600)).toBe(false);
     expect(isWithinKcalLimit(720, 600)).toBe(true); // exactly at the 20% boundary
     expect(isWithinKcalLimit(721, 600)).toBe(false);
@@ -35,25 +35,35 @@ describe("isWithinKcalLimit", () => {
   });
 });
 
-describe("buildCandidatesForRecipe", () => {
-  it("produces half/single/double-serving candidates and filters by kcal limit", () => {
+describe("buildCandidateForMeal", () => {
+  it("produces one candidate scored against remaining macros when within the kcal limit", () => {
     const remaining = { kcal: 600, proteinG: 45, carbsG: 60, fatG: 20 };
-    const perServing = { kcal: 500, proteinG: 40, carbsG: 50, fatG: 15 };
-    const candidates = buildCandidatesForRecipe({ id: "r1", name: "Test" }, perServing, remaining);
+    const totalMacros = { kcal: 500, proteinG: 40, carbsG: 50, fatG: 15 };
+    const candidate = buildCandidateForMeal({ id: "m1", name: "Test" }, totalMacros, remaining);
 
-    // 250 (0.5x), 500 (1x) pass; 1000 (2x) exceeds 600*1.2=720, filtered out.
-    expect(candidates.map((c) => c.servingsMultiplier)).toEqual([0.5, 1]);
+    expect(candidate).not.toBeNull();
+    expect(candidate?.mealId).toBe("m1");
+    expect(candidate?.macros).toEqual(totalMacros);
+  });
+
+  it("returns null when the meal's total exceeds the kcal limit", () => {
+    const remaining = { kcal: 600, proteinG: 45, carbsG: 60, fatG: 20 };
+    // 1000 kcal exceeds 600*1.2=720.
+    const totalMacros = { kcal: 1000, proteinG: 80, carbsG: 100, fatG: 30 };
+    const candidate = buildCandidateForMeal({ id: "m1", name: "Test" }, totalMacros, remaining);
+
+    expect(candidate).toBeNull();
   });
 });
 
 describe("rankSuggestions", () => {
   it("sorts by score ascending and caps at the limit", () => {
     const candidates = [
-      { recipeId: "a", recipeName: "A", servingsMultiplier: 1, macros: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }, score: 3 },
-      { recipeId: "b", recipeName: "B", servingsMultiplier: 1, macros: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }, score: 1 },
-      { recipeId: "c", recipeName: "C", servingsMultiplier: 1, macros: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }, score: 2 },
+      { mealId: "a", mealName: "A", macros: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }, score: 3 },
+      { mealId: "b", mealName: "B", macros: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }, score: 1 },
+      { mealId: "c", mealName: "C", macros: { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }, score: 2 },
     ];
     const ranked = rankSuggestions(candidates, 2);
-    expect(ranked.map((c) => c.recipeId)).toEqual(["b", "c"]);
+    expect(ranked.map((c) => c.mealId)).toEqual(["b", "c"]);
   });
 });

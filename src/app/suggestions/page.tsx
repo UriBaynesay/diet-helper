@@ -38,7 +38,7 @@ export default async function SuggestionsPage() {
             ) : (
               <div className="flex flex-col gap-2">
                 {suggestions.map((suggestion, i) => (
-                  <SuggestionCard key={`${suggestion.recipeId}-${i}`} suggestion={suggestion} />
+                  <SuggestionCard key={`${suggestion.mealId}-${i}`} suggestion={suggestion} />
                 ))}
               </div>
             )}

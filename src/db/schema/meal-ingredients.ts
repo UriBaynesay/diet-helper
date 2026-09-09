@@ -1,12 +1,12 @@
 import { pgTable, uuid, numeric, timestamp } from "drizzle-orm/pg-core";
-import { recipes } from "./recipes";
+import { meals } from "./meals";
 import { products } from "./products";
 
-export const recipeIngredients = pgTable("recipe_ingredients", {
+export const mealIngredients = pgTable("meal_ingredients", {
   id: uuid("id").primaryKey().defaultRandom(),
-  recipeId: uuid("recipe_id")
+  mealId: uuid("meal_id")
     .notNull()
-    .references(() => recipes.id, { onDelete: "cascade" }),
+    .references(() => meals.id, { onDelete: "cascade" }),
   productId: uuid("product_id")
     .notNull()
     .references(() => products.id),
