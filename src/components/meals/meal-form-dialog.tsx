@@ -4,13 +4,12 @@ import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,6 +60,13 @@ function ingredientLineText(i: ParsedIngredient): string {
   return parts.join(" ");
 }
 
+/**
+ * Bottom sheet, matching ProductFormDialog's header/footer pattern (Stage 3)
+ * now that servings/prepMinutes/instructions/tags are gone and a meal form
+ * is just a name field plus ingredient list management — simple enough to
+ * fit a sheet without the full-screen route the old recipe form's larger
+ * field set would have needed.
+ */
 export function MealFormDialog({
   trigger,
   mealId,
@@ -166,7 +172,7 @@ export function MealFormDialog({
   const hasUnmatchedIngredient = values.ingredients.some((i) => !i.productId);
 
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
@@ -179,104 +185,145 @@ export function MealFormDialog({
         }
       }}
     >
-      <DialogTrigger render={trigger as React.ReactElement} />
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{mealId ? strings.meals.editMeal : strings.meals.newMeal}</DialogTitle>
-        </DialogHeader>
+      <SheetTrigger render={trigger as React.ReactElement} />
+      <SheetContent side="bottom" className="max-h-[86%] rounded-t-[24px] p-0" showCloseButton={false}>
+        <SheetHeader className="sr-only">
+          <SheetTitle>{mealId ? strings.meals.editMeal : strings.meals.newMeal}</SheetTitle>
+        </SheetHeader>
 
-        {!mealId && (
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant={mode === "manual" ? "default" : "outline"}
-              onClick={() => setMode("manual")}
-            >
-              {strings.meals.modeManual}
+        <div className="flex max-h-[86vh] flex-col">
+          <div className="flex shrink-0 items-center justify-between p-4 pb-2">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)} style={{ color: "var(--ink-muted)" }}>
+              {strings.common.cancel}
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={mode === "paste" ? "default" : "outline"}
-              onClick={() => setMode("paste")}
-            >
-              {strings.meals.modePaste}
-            </Button>
+            <p className="font-display text-[16px] font-bold">
+              {mealId ? strings.meals.editMeal : strings.meals.newMeal}
+            </p>
+            <div className="w-10" />
           </div>
-        )}
 
-        {mode === "paste" && !mealId ? (
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label className="items-center gap-1">
-                {strings.meals.pasteLabel}
-                <FieldHint text={strings.meals.pasteHint} />
-              </Label>
-              <Textarea
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-                placeholder={strings.meals.pastePlaceholder}
-                rows={10}
-              />
-            </div>
-            {parseError && <p className="text-sm text-destructive">{parseError}</p>}
-            <Button onClick={handleParse} disabled={!pasteText.trim() || isParsing}>
-              {isParsing ? strings.extraction.processing : strings.meals.parseButton}
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label>{strings.meals.nameLabel}</Label>
-              <Input
-                value={values.name}
-                onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
-                autoFocus
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-1">
-                <Label>{strings.meals.ingredientsLabel}</Label>
-                <FieldHint text={strings.meals.ingredientsHint} />
+          <div className="flex flex-col gap-3.5 overflow-y-auto p-4 pt-1 pb-8">
+            {!mealId && (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mode === "manual" ? "default" : "outline"}
+                  onClick={() => setMode("manual")}
+                  className="rounded-xl"
+                >
+                  {strings.meals.modeManual}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mode === "paste" ? "default" : "outline"}
+                  onClick={() => setMode("paste")}
+                  className="rounded-xl"
+                >
+                  {strings.meals.modePaste}
+                </Button>
               </div>
-              {hasUnmatchedIngredient && (
-                <p className="text-sm text-amber-700 dark:text-amber-400">
-                  {strings.meals.parsedIngredientsNotice}
-                </p>
-              )}
-              {values.ingredients.map((ingredient) => (
-                <IngredientRow
-                  key={ingredient.key}
-                  value={ingredient}
-                  onChange={(next) => updateIngredient(ingredient.key, next)}
-                  onRemove={() => removeIngredient(ingredient.key)}
-                />
-              ))}
-              <Button type="button" variant="outline" size="sm" onClick={addIngredient}>
-                <Plus className="size-4" />
-                {strings.meals.addIngredient}
-              </Button>
-            </div>
+            )}
 
-            {error && (
-              <p className="rounded-lg bg-destructive/10 p-2 text-sm text-destructive">{error}</p>
+            {mode === "paste" && !mealId ? (
+              <>
+                <Field label={strings.meals.pasteLabel} hint={strings.meals.pasteHint}>
+                  <Textarea
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    placeholder={strings.meals.pastePlaceholder}
+                    rows={10}
+                    className="rounded-xl"
+                  />
+                </Field>
+                {parseError && <p className="text-sm text-destructive">{parseError}</p>}
+                <Button
+                  onClick={handleParse}
+                  disabled={!pasteText.trim() || isParsing}
+                  className="h-12 rounded-2xl text-[15px] font-bold"
+                  style={{ background: "var(--accent-coral)" }}
+                >
+                  {isParsing ? strings.extraction.processing : strings.meals.parseButton}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Field label={strings.meals.nameLabel} required>
+                  <Input
+                    value={values.name}
+                    onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
+                    className="rounded-xl"
+                    autoFocus
+                  />
+                </Field>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1 text-[12px] font-bold" style={{ color: "var(--ink-muted)" }}>
+                    {strings.meals.ingredientsLabel}
+                    <FieldHint text={strings.meals.ingredientsHint} />
+                  </div>
+                  {hasUnmatchedIngredient && (
+                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                      {strings.meals.parsedIngredientsNotice}
+                    </p>
+                  )}
+                  {values.ingredients.map((ingredient) => (
+                    <IngredientRow
+                      key={ingredient.key}
+                      value={ingredient}
+                      onChange={(next) => updateIngredient(ingredient.key, next)}
+                      onRemove={() => removeIngredient(ingredient.key)}
+                    />
+                  ))}
+                  <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={addIngredient}>
+                    <Plus className="size-4" />
+                    {strings.meals.addIngredient}
+                  </Button>
+                </div>
+
+                {error && (
+                  <p className="rounded-xl bg-destructive/10 p-2.5 text-sm text-destructive">{error}</p>
+                )}
+
+                {(mode === "manual" || mealId) && (
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!values.name.trim() || !hasValidIngredient || isPending}
+                    className="mt-1 h-12 rounded-2xl text-[15px] font-bold"
+                    style={{ background: "var(--accent-coral)" }}
+                  >
+                    {isPending ? strings.common.saving : strings.meals.submit}
+                  </Button>
+                )}
+              </>
             )}
           </div>
-        )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
-        {(mode === "manual" || mealId) && (
-          <DialogFooter>
-            <Button
-              onClick={handleSubmit}
-              disabled={!values.name.trim() || !hasValidIngredient || isPending}
-            >
-              {isPending ? strings.common.saving : strings.meals.submit}
-            </Button>
-          </DialogFooter>
-        )}
-      </DialogContent>
-    </Dialog>
+function Field({
+  label,
+  required,
+  hint,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label className="items-center gap-1" style={{ color: "var(--ink-muted)" }}>
+        {label}
+        {required && <span className="text-destructive"> *</span>}
+        {hint && <FieldHint text={hint} />}
+      </Label>
+      {children}
+    </div>
   );
 }

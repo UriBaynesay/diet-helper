@@ -60,9 +60,10 @@ export function IngredientRow({
     <div
       className={
         isUnmatched
-          ? "flex flex-col gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/5 p-2"
-          : "flex flex-col gap-1.5 rounded-lg border p-2"
+          ? "flex flex-col gap-1.5 rounded-xl border border-amber-500/50 bg-amber-500/5 p-2"
+          : "flex flex-col gap-1.5 rounded-xl border p-2"
       }
+      style={isUnmatched ? undefined : { borderColor: "var(--border)" }}
     >
       {value.parsedText && (
         <p dir="auto" className="text-xs text-muted-foreground">
@@ -79,9 +80,10 @@ export function IngredientRow({
               onChange({ ...value, productId: "", productName: "" });
             }}
             placeholder={strings.meals.ingredientSearchPlaceholder}
+            className="rounded-lg"
           />
           {open && results.length > 0 && (
-            <div className="absolute z-10 mt-1 flex w-full max-h-40 flex-col gap-1 overflow-y-auto rounded-lg border bg-white p-1 shadow-md dark:bg-neutral-900">
+            <div className="absolute z-10 mt-1 flex w-full max-h-40 flex-col gap-1 overflow-y-auto rounded-xl border bg-white p-1 shadow-md dark:bg-neutral-900">
               {results.map((product) => (
                 <button
                   key={product.id}
@@ -103,7 +105,7 @@ export function IngredientRow({
         <Input
           dir="ltr"
           type="number"
-          className="w-24"
+          className="w-24 rounded-lg"
           placeholder={strings.meals.ingredientQuantityLabel}
           value={value.quantityG}
           onChange={(e) => onChange({ ...value, quantityG: e.target.value })}
