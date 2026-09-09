@@ -39,7 +39,7 @@ export async function PATCH(
     return apiError("not_found", "Diary entry not found", 404);
   }
   if (!existing.productId) {
-    return apiError("unsupported", "Recipe-based entries can't be edited yet", 400);
+    return apiError("unsupported", "Meal-based entries can't be edited yet", 400);
   }
 
   let macros: { kcal: number; proteinG: number; carbsG: number; fatG: number } | null = null;

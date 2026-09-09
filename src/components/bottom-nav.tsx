@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { strings } from "@/lib/strings";
 
-type NavKey = "today" | "products" | "recipes" | "suggestions" | "profile";
+type NavKey = "today" | "products" | "meals" | "suggestions" | "profile";
 
 // Active state is derived from the real current route via usePathname(),
 // not passed as a manual `active` prop per page (the old AppNav pattern) —
@@ -34,7 +34,7 @@ const ICONS: Record<NavKey, React.ReactNode> = {
       <path d="M8 9h8M8 13h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   ),
-  recipes: (
+  meals: (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
       <path
         d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5A1.5 1.5 0 014 18.5v-13Z"
@@ -74,7 +74,7 @@ const ICONS: Record<NavKey, React.ReactNode> = {
 const ITEMS: { key: NavKey; href: string; label: string }[] = [
   { key: "today", href: "/", label: strings.nav.today },
   { key: "products", href: "/products", label: strings.nav.products },
-  { key: "recipes", href: "/recipes", label: strings.nav.recipes },
+  { key: "meals", href: "/meals", label: strings.nav.meals },
   { key: "suggestions", href: "/suggestions", label: strings.nav.suggestions },
   { key: "profile", href: "/profile", label: strings.nav.profile },
 ];

@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { diaryEntries, products, recipes } from "@/db/schema";
+import { diaryEntries, products, meals } from "@/db/schema";
 import { findActiveGoal } from "@/lib/goals/active-goal";
 
 export type Macros = { kcal: number; proteinG: number; carbsG: number; fatG: number };
@@ -9,9 +9,8 @@ export type DiaryDayEntry = {
   id: string;
   mealType: "breakfast" | "lunch" | "dinner" | "snack";
   productId: string | null;
-  recipeId: string | null;
+  mealId: string | null;
   quantityG: string | null;
-  servings: string | null;
   kcal: number;
   proteinG: number;
   carbsG: number;
@@ -26,33 +25,31 @@ export async function getDiaryDay(userId: string, date: string) {
       id: diaryEntries.id,
       mealType: diaryEntries.mealType,
       productId: diaryEntries.productId,
-      recipeId: diaryEntries.recipeId,
+      mealId: diaryEntries.mealId,
       quantityG: diaryEntries.quantityG,
-      servings: diaryEntries.servings,
       kcal: diaryEntries.kcal,
       proteinG: diaryEntries.proteinG,
       carbsG: diaryEntries.carbsG,
       fatG: diaryEntries.fatG,
       productName: products.name,
-      recipeName: recipes.name,
+      mealName: meals.name,
     })
     .from(diaryEntries)
     .leftJoin(products, eq(diaryEntries.productId, products.id))
-    .leftJoin(recipes, eq(diaryEntries.recipeId, recipes.id))
+    .leftJoin(meals, eq(diaryEntries.mealId, meals.id))
     .where(and(eq(diaryEntries.userId, userId), eq(diaryEntries.entryDate, new Date(date))));
 
   const entries: DiaryDayEntry[] = rows.map((row) => ({
     id: row.id,
     mealType: row.mealType,
     productId: row.productId,
-    recipeId: row.recipeId,
+    mealId: row.mealId,
     quantityG: row.quantityG,
-    servings: row.servings,
     kcal: Number(row.kcal),
     proteinG: Number(row.proteinG),
     carbsG: Number(row.carbsG),
     fatG: Number(row.fatG),
-    name: row.productName ?? row.recipeName ?? "",
+    name: row.productName ?? row.mealName ?? "",
   }));
 
   const totals = entries.reduce<Macros>(

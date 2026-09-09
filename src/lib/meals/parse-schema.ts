@@ -11,14 +11,10 @@ export const parsedIngredientSchema = z.object({
   estimatedQuantityG: z.number().nullable(),
 });
 
-export const parseRecipeResultSchema = z.object({
+export const parseMealResultSchema = z.object({
   name: z.string().nullable(),
-  description: z.string().nullable(),
-  servings: z.number().int().nullable(),
-  prepMinutes: z.number().int().nullable(),
-  instructions: z.string().nullable(),
   ingredients: z.array(parsedIngredientSchema),
 });
 
 export type ParsedIngredient = z.infer<typeof parsedIngredientSchema>;
-export type ParseRecipeResult = z.infer<typeof parseRecipeResultSchema>;
+export type ParseMealResult = z.infer<typeof parseMealResultSchema>;

@@ -18,9 +18,8 @@ type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
 
 export type Suggestion = {
-  recipeId: string;
-  recipeName: string;
-  servingsMultiplier: number;
+  mealId: string;
+  mealName: string;
   macros: { kcal: number; proteinG: number; carbsG: number; fatG: number };
   reason: string;
 };
@@ -41,8 +40,7 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
         body: JSON.stringify({
           entryDate: todayIso(),
           mealType,
-          recipeId: suggestion.recipeId,
-          servings: suggestion.servingsMultiplier,
+          mealId: suggestion.mealId,
         }),
       });
       if (res.ok) {
@@ -56,11 +54,10 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border p-3">
-      <Link href={`/recipes/${suggestion.recipeId}`} className="font-medium hover:underline">
-        {suggestion.recipeName}
+      <Link href={`/meals/${suggestion.mealId}`} className="font-medium hover:underline">
+        {suggestion.mealName}
       </Link>
       <span dir="ltr" className="text-xs text-muted-foreground">
-        {suggestion.servingsMultiplier} {strings.suggestionsScreen.servingsLabel} ·{" "}
         {Math.round(suggestion.macros.kcal)} kcal · {Math.round(suggestion.macros.proteinG)}P{" "}
         {Math.round(suggestion.macros.carbsG)}C {Math.round(suggestion.macros.fatG)}F
       </span>

@@ -78,7 +78,7 @@ export function IngredientRow({
               setOpen(true);
               onChange({ ...value, productId: "", productName: "" });
             }}
-            placeholder={strings.recipes.ingredientSearchPlaceholder}
+            placeholder={strings.meals.ingredientSearchPlaceholder}
           />
           {open && results.length > 0 && (
             <div className="absolute z-10 mt-1 flex w-full max-h-40 flex-col gap-1 overflow-y-auto rounded-lg border bg-white p-1 shadow-md dark:bg-neutral-900">
@@ -104,7 +104,7 @@ export function IngredientRow({
           dir="ltr"
           type="number"
           className="w-24"
-          placeholder={strings.recipes.ingredientQuantityLabel}
+          placeholder={strings.meals.ingredientQuantityLabel}
           value={value.quantityG}
           onChange={(e) => onChange({ ...value, quantityG: e.target.value })}
         />
@@ -112,7 +112,7 @@ export function IngredientRow({
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label={strings.recipes.removeIngredient}
+          aria-label={strings.meals.removeIngredient}
           onClick={onRemove}
         >
           <X className="size-3.5" />
@@ -121,7 +121,7 @@ export function IngredientRow({
       {isUnmatched && (
         <p className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
           <AlertCircle className="size-3" />
-          {strings.recipes.unmatchedIngredient}
+          {strings.meals.unmatchedIngredient}
         </p>
       )}
     </div>
