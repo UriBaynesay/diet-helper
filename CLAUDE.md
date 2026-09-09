@@ -100,6 +100,94 @@ Details worth remembering:
   vars (verified by running the build with none present); all real config
   is injected at container-start time via Compose, not during `docker build`.
 
+## UI design system (redesign, Stages 1-6, complete)
+
+Every screen has been restyled to a single shared visual language, per a
+design handoff (`design_handoff_diet_app_redesign`). **Any new UI work
+(new screens, new components, edits to existing ones) should follow this
+system rather than plain shadcn defaults** — the two are visually
+inconsistent side by side, and the whole point of the redesign was to
+retire the old default look everywhere, not leave it in whichever corner
+hasn't been touched yet.
+
+Tokens are real CSS custom properties in `src/app/globals.css` (`:root`),
+exposed to Tailwind via `@theme inline` — reach for these by name, not
+arbitrary hex/oklch values or ad-hoc rem sizes:
+
+- **`--accent-coral`** — the one accent color. Primary actions only: a
+  screen's main submit button, the meals/products "+" add button, an
+  active segmented-toggle state. Not for secondary/destructive actions.
+- **`--ink-muted`** / **`--ink-mid`** — secondary text (labels, hints,
+  metadata lines, kickers), never `text-muted-foreground` from stock
+  shadcn — this app's palette defines its own muted-ink scale instead.
+- **`--border`** — every card/section border color, set explicitly via
+  `style={{ borderColor: "var(--border)" }}` rather than relying on the
+  Tailwind `border` utility's default.
+- **`--muted`** — the flat background for a pill/chip/stat-tile/no-op
+  banner (e.g. a "no goal set" notice, a BMI stat card).
+- **`--destructive`** — explicit background for a real destructive action
+  button (delete/archive confirm), not just red text.
+- Radii are named for usage, not a t-shirt scale: `rounded-[18px]` (a
+  card/section — matches `--radius-card`), `rounded-t-[24px]` (a bottom
+  sheet — matches `--radius-sheet`), `rounded-xl`/`rounded-2xl` for
+  inputs and pill buttons.
+- `font-display` — screen titles and sheet headers only (see any page's
+  `<h1>`), not body text.
+
+Recurring shell patterns, with a reference file for each — read the
+reference before building something new in the same family rather than
+reinventing it:
+
+- **List-item card**: `rounded-[18px] border bg-card p-3.5` with
+  `style={{ borderColor: "var(--border)" }}`, bold name line + a muted
+  `dir="ltr"` metadata/macro line underneath. Reference:
+  [`product-list-item.tsx`](src/components/products/product-list-item.tsx),
+  [`meal-list-item.tsx`](src/components/meals/meal-list-item.tsx).
+- **Bottom-sheet form**: `Sheet`/`SheetContent side="bottom"` (not a
+  centered `Dialog`) with `className="max-h-[86%] rounded-t-[24px] p-0"
+  showCloseButton={false}`, a manual header row (Cancel button — title —
+  spacer div) instead of the default `SheetTitle`/close-X, fields via a
+  local `Field` helper (label in `--ink-muted`, optional `FieldHint`), and
+  a full-width `h-12 rounded-2xl` coral submit button pinned at the
+  bottom. Reference:
+  [`product-form-dialog.tsx`](src/components/products/product-form-dialog.tsx),
+  [`meal-form-dialog.tsx`](src/components/meals/meal-form-dialog.tsx),
+  [`add-food-dialog.tsx`](src/components/diary/add-food-dialog.tsx).
+- **Page shell**: `<main className="mx-auto flex w-full max-w-lg flex-1
+  flex-col gap-3 p-4 pb-32">`, an `<h1 className="font-display text-[26px]
+  font-extrabold">` title, `<BottomNav />` as a page-level sibling (fixed,
+  outside `<main>`). Reference any restyled page under `src/app/`.
+- **Segmented toggle (two/three mutually-exclusive options)**: a plain row
+  of `Button`s, `variant="default"` + `style={{ background:
+  "var(--accent-coral)" }}` for the active one, `variant="outline"`
+  otherwise. **Deliberately not** shadcn's `Toggle`/`ToggleGroup` — that
+  primitive's `data-[state=on]:bg-muted` styling is confirmed broken in
+  this environment (see the `frontend-ui-ux` skill). Reference: the
+  manual/paste mode switch in `meal-form-dialog.tsx`, the sex picker in
+  [`profile-form.tsx`](src/components/profile/profile-form.tsx).
+- **Confirm-destructive dialog**: `AlertDialogContent` with
+  `className="rounded-[20px]"`, `AlertDialogAction` given
+  `style={{ background: "var(--destructive)" }}` explicitly (stock shadcn
+  doesn't color it red by default). Reference:
+  [`archive-product-button.tsx`](src/components/products/archive-product-button.tsx),
+  [`delete-meal-button.tsx`](src/components/meals/delete-meal-button.tsx).
+
+General rules that held across every stage, worth restating since they're
+easy to regress on a new screen:
+
+- Reuse `Button`/`Input`/`Select`/etc. — never a raw `<button>`/`<input>`
+  (an existing, non-negotiable rule from the `frontend-ui-ux` skill; also
+  caught and fixed mid-redesign once already).
+- RTL/Hebrew: logical Tailwind properties only (`ps-`/`pe-`/`start-`/`end-`
+  , never `left`/`right`), `dir="ltr"` wrapping around any numeric/macro
+  value, all UI strings centralized in `src/lib/strings.ts` — never an
+  inline literal.
+- Every card/section border and muted-text color is set via an explicit
+  `style={{ color/borderColor: "var(--token)" }}`, not a Tailwind color
+  utility class — this app's tokens aren't wired into Tailwind's default
+  color utilities (`text-muted-foreground` etc. still point at stock
+  shadcn grays, not this palette).
+
 ## Guardrails specific to this app
 
 - Don't reintroduce Docker (or any other infra) here speculatively — wait
