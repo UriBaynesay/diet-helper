@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -13,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Section, Field } from "@/components/profile/profile-form";
 import { strings } from "@/lib/strings";
 
 type GoalType = "lose" | "maintain" | "gain";
@@ -120,120 +119,111 @@ export function GoalPanel({
 
   if (!profileComplete) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{strings.bmiScreen.sectionTitle}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">{strings.profile.incompleteForBmi}</p>
-        </CardContent>
-      </Card>
+      <Section title={strings.bmiScreen.sectionTitle}>
+        <p className="text-sm" style={{ color: "var(--ink-muted)" }}>{strings.profile.incompleteForBmi}</p>
+      </Section>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{strings.bmiScreen.sectionTitle}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {currentGoal && (
-          <div className="rounded-lg bg-muted/40 p-3 text-sm">
-            <p className="font-medium">{strings.bmiScreen.currentGoalTitle}</p>
-            <p dir="ltr" className="text-muted-foreground">
-              {Math.round(Number(currentGoal.targetKcal))} kcal ·{" "}
-              {Math.round(Number(currentGoal.targetProteinG))}P{" "}
-              {Math.round(Number(currentGoal.targetCarbsG))}C{" "}
-              {Math.round(Number(currentGoal.targetFatG))}F
-            </p>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-2">
-          <Label>{strings.bmiScreen.goalTypeLabel}</Label>
-          <Select value={goalType} onValueChange={(v) => setGoalType(v as GoalType)}>
-            <SelectTrigger className="w-full">
-              <SelectValue>{GOAL_TYPE_LABELS[goalType]}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {GOAL_TYPES.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {GOAL_TYPE_LABELS[type]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <Section title={strings.bmiScreen.sectionTitle}>
+      {currentGoal && (
+        <div className="rounded-xl p-3 text-sm" style={{ background: "var(--muted)" }}>
+          <p className="font-semibold">{strings.bmiScreen.currentGoalTitle}</p>
+          <p dir="ltr" style={{ color: "var(--ink-muted)" }}>
+            {Math.round(Number(currentGoal.targetKcal))} kcal ·{" "}
+            {Math.round(Number(currentGoal.targetProteinG))}P{" "}
+            {Math.round(Number(currentGoal.targetCarbsG))}C{" "}
+            {Math.round(Number(currentGoal.targetFatG))}F
+          </p>
         </div>
+      )}
 
-        {error === "no_weight_log" && (
-          <p className="text-sm text-muted-foreground">{strings.profile.incompleteForBmi}</p>
-        )}
+      <Field label={strings.bmiScreen.goalTypeLabel}>
+        <Select value={goalType} onValueChange={(v) => setGoalType(v as GoalType)}>
+          <SelectTrigger className="w-full rounded-xl">
+            <SelectValue>{GOAL_TYPE_LABELS[goalType]}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {GOAL_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {GOAL_TYPE_LABELS[type]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
 
-        {bmi && !isPending && (
-          <>
-            <div className="grid grid-cols-3 gap-2 text-center text-sm">
-              <div className="rounded-lg bg-muted/40 p-2">
-                <p className="text-xs text-muted-foreground">{strings.bmiScreen.bmiLabel}</p>
-                <p dir="ltr" className="font-medium">
-                  {bmi.bmi.toFixed(1)}
-                </p>
-                <p className="text-xs text-muted-foreground">{BMI_CATEGORY_LABELS[bmi.bmiCategory]}</p>
-              </div>
-              <div className="rounded-lg bg-muted/40 p-2">
-                <p className="text-xs text-muted-foreground">{strings.bmiScreen.bmrLabel}</p>
-                <p dir="ltr" className="font-medium">
-                  {Math.round(bmi.bmr)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-muted/40 p-2">
-                <p className="text-xs text-muted-foreground">{strings.bmiScreen.tdeeLabel}</p>
-                <p dir="ltr" className="font-medium">
-                  {Math.round(bmi.tdee)}
-                </p>
-              </div>
+      {error === "no_weight_log" && (
+        <p className="text-sm" style={{ color: "var(--ink-muted)" }}>{strings.profile.incompleteForBmi}</p>
+      )}
+
+      {bmi && !isPending && (
+        <>
+          <div className="grid grid-cols-3 gap-2 text-center text-sm">
+            <StatCard label={strings.bmiScreen.bmiLabel} value={bmi.bmi.toFixed(1)} sub={BMI_CATEGORY_LABELS[bmi.bmiCategory]} />
+            <StatCard label={strings.bmiScreen.bmrLabel} value={Math.round(bmi.bmr).toString()} />
+            <StatCard label={strings.bmiScreen.tdeeLabel} value={Math.round(bmi.tdee).toString()} />
+          </div>
+
+          {bmi.flooredAtMinimum && (
+            <p
+              className="rounded-xl p-2.5 text-sm"
+              style={{ background: "var(--unverified-bg)", color: "var(--unverified-fg)" }}
+            >
+              {strings.bmiScreen.flooredWarning}
+            </p>
+          )}
+
+          <p className="text-xs" style={{ color: "var(--ink-muted)" }}>{bmi.disclaimer}</p>
+
+          <div className="flex flex-col gap-3 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+            <p className="text-[13px] font-bold" style={{ color: "var(--ink-muted)" }}>
+              {strings.bmiScreen.orEditManually}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <FieldNum label={strings.bmiScreen.targetKcalLabel} value={targetKcal} onChange={setTargetKcal} />
+              <FieldNum
+                label={strings.bmiScreen.targetProteinLabel}
+                value={targetProteinG}
+                onChange={setTargetProteinG}
+              />
+              <FieldNum
+                label={strings.bmiScreen.targetCarbsLabel}
+                value={targetCarbsG}
+                onChange={setTargetCarbsG}
+              />
+              <FieldNum label={strings.bmiScreen.targetFatLabel} value={targetFatG} onChange={setTargetFatG} />
             </div>
+          </div>
 
-            {bmi.flooredAtMinimum && (
-              <p className="rounded-lg bg-amber-500/10 p-2 text-sm text-amber-700 dark:text-amber-400">
-                {strings.bmiScreen.flooredWarning}
-              </p>
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={handleSaveGoal}
+              disabled={isSaving}
+              className="h-12 rounded-2xl text-[15px] font-bold"
+              style={{ background: "var(--accent-coral)" }}
+            >
+              {isSaving ? strings.common.saving : strings.bmiScreen.saveGoal}
+            </Button>
+            {saved && !isSaving && (
+              <p className="text-center text-xs" style={{ color: "var(--ink-muted)" }}>{strings.bmiScreen.goalSaved}</p>
             )}
+            {saveError && <p className="text-center text-xs text-destructive">{saveError}</p>}
+          </div>
+        </>
+      )}
+    </Section>
+  );
+}
 
-            <p className="text-xs text-muted-foreground">{bmi.disclaimer}</p>
-
-            <div className="flex flex-col gap-3 border-t pt-3">
-              <p className="text-sm font-medium">{strings.bmiScreen.orEditManually}</p>
-              <div className="grid grid-cols-2 gap-3">
-                <FieldNum label={strings.bmiScreen.targetKcalLabel} value={targetKcal} onChange={setTargetKcal} />
-                <FieldNum
-                  label={strings.bmiScreen.targetProteinLabel}
-                  value={targetProteinG}
-                  onChange={setTargetProteinG}
-                />
-                <FieldNum
-                  label={strings.bmiScreen.targetCarbsLabel}
-                  value={targetCarbsG}
-                  onChange={setTargetCarbsG}
-                />
-                <FieldNum label={strings.bmiScreen.targetFatLabel} value={targetFatG} onChange={setTargetFatG} />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Button onClick={handleSaveGoal} disabled={isSaving}>
-                {isSaving ? strings.common.saving : strings.bmiScreen.saveGoal}
-              </Button>
-              {saved && !isSaving && (
-                <p className="text-center text-xs text-muted-foreground">{strings.bmiScreen.goalSaved}</p>
-              )}
-              {saveError && (
-                <p className="text-center text-xs text-destructive">{saveError}</p>
-              )}
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-xl p-2" style={{ background: "var(--muted)" }}>
+      <p className="text-xs" style={{ color: "var(--ink-muted)" }}>{label}</p>
+      <p dir="ltr" className="font-semibold">{value}</p>
+      {sub && <p className="text-xs" style={{ color: "var(--ink-muted)" }}>{sub}</p>}
+    </div>
   );
 }
 
@@ -247,9 +237,8 @@ function FieldNum({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label>{label}</Label>
-      <Input dir="ltr" type="number" value={value} onChange={(e) => onChange(e.target.value)} />
-    </div>
+    <Field label={label}>
+      <Input dir="ltr" type="number" value={value} onChange={(e) => onChange(e.target.value)} className="rounded-xl" />
+    </Field>
   );
 }
