@@ -8,6 +8,7 @@ import { strings } from "@/lib/strings";
 import { BottomNav } from "@/components/bottom-nav";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { GoalPanel } from "@/components/profile/goal-panel";
+import { LogoutButton } from "@/components/profile/logout-button";
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
@@ -26,8 +27,8 @@ export default async function ProfilePage() {
 
   return (
     <>
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-4 p-4 pb-32">
-        <h1 className="text-xl font-semibold">{strings.profile.title}</h1>
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-3 p-4 pb-32">
+        <h1 className="font-display text-[26px] font-extrabold">{strings.profile.title}</h1>
 
         <ProfileForm
           profile={{
@@ -53,6 +54,8 @@ export default async function ProfilePage() {
               : null
           }
         />
+
+        <LogoutButton />
       </main>
       <BottomNav />
     </>

@@ -82,8 +82,7 @@ const ITEMS: { key: NavKey; href: string; label: string }[] = [
 /**
  * Fixed bottom tab bar, per the UI redesign handoff. Replaces AppNav.
  * Logout has no home here (the redesign has no nav-bar logout affordance) —
- * it moves to the Profile screen in a later stage; there is deliberately no
- * interim logout UI until then.
+ * it lives on the Profile screen instead (see logout-button.tsx).
  */
 export function BottomNav() {
   const pathname = usePathname();

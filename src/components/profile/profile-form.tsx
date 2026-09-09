@@ -2,11 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -89,127 +87,148 @@ export function ProfileForm({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>{strings.profile.detailsSectionTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label>{strings.profile.sexLabel}</Label>
-            <RadioGroup
-              value={sex ?? undefined}
-              onValueChange={(v) => setSex(v as Sex)}
-              className="flex flex-row gap-8"
+    <div className="flex flex-col gap-3">
+      <Section title={strings.profile.detailsSectionTitle}>
+        <Field label={strings.profile.sexLabel}>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={sex === "male" ? "default" : "outline"}
+              className="flex-1 rounded-xl"
+              style={sex === "male" ? { background: "var(--accent-coral)" } : undefined}
+              onClick={() => setSex("male")}
             >
-              <div className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="male" id="sex-male" />
-                <Label htmlFor="sex-male">{strings.profile.sexMale}</Label>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="female" id="sex-female" />
-                <Label htmlFor="sex-female">{strings.profile.sexFemale}</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="birth-date">{strings.profile.birthDateLabel}</Label>
-            <Input
-              id="birth-date"
-              type="date"
-              dir="ltr"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="height">{strings.profile.heightLabel}</Label>
-            <Input
-              id="height"
-              type="number"
-              dir="ltr"
-              value={heightCm}
-              onChange={(e) => setHeightCm(e.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label className="items-center gap-1">
-              {strings.profile.activityLabel}
-              <FieldHint text={strings.profile.activityHint} />
-            </Label>
-            <Select
-              value={activityLevel ?? undefined}
-              onValueChange={(v) => setActivityLevel(v as ActivityLevel)}
+              {strings.profile.sexMale}
+            </Button>
+            <Button
+              type="button"
+              variant={sex === "female" ? "default" : "outline"}
+              className="flex-1 rounded-xl"
+              style={sex === "female" ? { background: "var(--accent-coral)" } : undefined}
+              onClick={() => setSex("female")}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue>
-                  {activityLevel ? ACTIVITY_LABELS[activityLevel] : ""}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {ACTIVITY_LEVELS.map((level) => (
-                  <SelectItem key={level} value={level}>
-                    {ACTIVITY_LABELS[level]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {strings.profile.sexFemale}
+            </Button>
           </div>
+        </Field>
 
-          <div className="flex items-center justify-between">
-            <Label htmlFor="notifications">{strings.profile.notificationsLabel}</Label>
-            <Switch
-              id="notifications"
-              checked={notificationsEnabled}
-              onCheckedChange={setNotificationsEnabled}
-            />
-          </div>
-        </CardContent>
-      </Card>
+        <Field label={strings.profile.birthDateLabel}>
+          <Input
+            id="birth-date"
+            type="date"
+            dir="ltr"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            className="rounded-xl"
+          />
+        </Field>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{strings.profile.weightSectionTitle}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">
-            {latestWeightKg !== null ? (
-              <>
-                {strings.profile.latestWeightLabel}:{" "}
-                <span dir="ltr">{latestWeightKg} ק״ג</span>
-              </>
-            ) : (
-              strings.profile.noWeightYet
-            )}
-          </p>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="weight" className="items-center gap-1">
-              {strings.profile.weightLabel}
-              <FieldHint text={strings.profile.weightHint} />
-            </Label>
-            <Input
-              id="weight"
-              type="number"
-              dir="ltr"
-              value={weightKg}
-              onChange={(e) => setWeightKg(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+        <Field label={strings.profile.heightLabel}>
+          <Input
+            id="height"
+            type="number"
+            dir="ltr"
+            value={heightCm}
+            onChange={(e) => setHeightCm(e.target.value)}
+            className="rounded-xl"
+          />
+        </Field>
+
+        <Field label={strings.profile.activityLabel} hint={strings.profile.activityHint}>
+          <Select
+            value={activityLevel ?? undefined}
+            onValueChange={(v) => setActivityLevel(v as ActivityLevel)}
+          >
+            <SelectTrigger className="w-full rounded-xl">
+              <SelectValue>{activityLevel ? ACTIVITY_LABELS[activityLevel] : ""}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {ACTIVITY_LEVELS.map((level) => (
+                <SelectItem key={level} value={level}>
+                  {ACTIVITY_LABELS[level]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <div className="flex items-center justify-between">
+          <Label htmlFor="notifications" style={{ color: "var(--ink-muted)" }}>
+            {strings.profile.notificationsLabel}
+          </Label>
+          <Switch id="notifications" checked={notificationsEnabled} onCheckedChange={setNotificationsEnabled} />
+        </div>
+      </Section>
+
+      <Section title={strings.profile.weightSectionTitle}>
+        <p className="text-sm" style={{ color: "var(--ink-muted)" }}>
+          {latestWeightKg !== null ? (
+            <>
+              {strings.profile.latestWeightLabel}: <span dir="ltr">{latestWeightKg} ק״ג</span>
+            </>
+          ) : (
+            strings.profile.noWeightYet
+          )}
+        </p>
+        <Field label={strings.profile.weightLabel} hint={strings.profile.weightHint}>
+          <Input
+            id="weight"
+            type="number"
+            dir="ltr"
+            value={weightKg}
+            onChange={(e) => setWeightKg(e.target.value)}
+            className="rounded-xl"
+          />
+        </Field>
+      </Section>
 
       <div className="flex flex-col gap-2">
-        <Button onClick={handleSubmit} disabled={isPending}>
+        <Button
+          onClick={handleSubmit}
+          disabled={isPending}
+          className="h-12 rounded-2xl text-[15px] font-bold"
+          style={{ background: "var(--accent-coral)" }}
+        >
           {isPending ? strings.common.saving : strings.profile.saveProfile}
         </Button>
         {saved && !isPending && (
-          <p className="text-center text-xs text-muted-foreground">{strings.profile.profileSaved}</p>
+          <p className="text-center text-xs" style={{ color: "var(--ink-muted)" }}>
+            {strings.profile.profileSaved}
+          </p>
         )}
         {error && <p className="text-center text-xs text-destructive">{error}</p>}
       </div>
+    </div>
+  );
+}
+
+export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3.5 rounded-[18px] border bg-card p-3.5" style={{ borderColor: "var(--border)" }}>
+      <p className="text-[13px] font-bold" style={{ color: "var(--ink-muted)" }}>
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+export function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label className="items-center gap-1" style={{ color: "var(--ink-muted)" }}>
+        {label}
+        {hint && <FieldHint text={hint} />}
+      </Label>
+      {children}
     </div>
   );
 }
