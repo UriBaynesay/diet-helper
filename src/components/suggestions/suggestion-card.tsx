@@ -53,19 +53,21 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border p-3">
-      <Link href={`/meals/${suggestion.mealId}`} className="font-medium hover:underline">
-        {suggestion.mealName}
-      </Link>
-      <span dir="ltr" className="text-xs text-muted-foreground">
-        {Math.round(suggestion.macros.kcal)} kcal · {Math.round(suggestion.macros.proteinG)}P{" "}
-        {Math.round(suggestion.macros.carbsG)}C {Math.round(suggestion.macros.fatG)}F
-      </span>
-      <p className="text-sm text-muted-foreground">{suggestion.reason}</p>
+    <div className="flex flex-col gap-2.5 rounded-[18px] border bg-card p-3.5" style={{ borderColor: "var(--border)" }}>
+      <div>
+        <Link href={`/meals/${suggestion.mealId}`} className="text-[15.5px] font-bold hover:underline">
+          {suggestion.mealName}
+        </Link>
+        <div dir="ltr" className="mt-1 text-xs" style={{ color: "var(--ink-muted)" }}>
+          {Math.round(suggestion.macros.kcal)} kcal · {Math.round(suggestion.macros.proteinG)}P{" "}
+          {Math.round(suggestion.macros.carbsG)}C {Math.round(suggestion.macros.fatG)}F
+        </div>
+      </div>
+      <p className="text-sm" style={{ color: "var(--ink-muted)" }}>{suggestion.reason}</p>
 
       <div className="flex items-center gap-2">
         <Select value={mealType} onValueChange={(v) => v && setMealType(v as MealType)}>
-          <SelectTrigger className="flex-1">
+          <SelectTrigger className="flex-1 rounded-xl">
             <SelectValue>{strings.mealTypes[mealType]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -76,12 +78,20 @@ export function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
             ))}
           </SelectContent>
         </Select>
-        <Button size="sm" onClick={handleLog} disabled={isPending || logged}>
+        <Button
+          size="sm"
+          onClick={handleLog}
+          disabled={isPending || logged}
+          className="rounded-xl font-bold text-white"
+          style={{ background: "var(--accent-coral)" }}
+        >
           {strings.suggestionsScreen.logThis}
         </Button>
       </div>
       {logged && (
-        <p className="text-center text-xs text-muted-foreground">{strings.suggestionsScreen.logSuccess}</p>
+        <p className="text-center text-xs" style={{ color: "var(--ink-muted)" }}>
+          {strings.suggestionsScreen.logSuccess}
+        </p>
       )}
       {error && <p className="text-center text-xs text-destructive">{error}</p>}
     </div>
