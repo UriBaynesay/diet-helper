@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, jsonb, timestamp, pgEnum } from "drizzle-orm/pg-core";
-import { users } from "./users";
+import { profiles } from "./profiles";
 import { products } from "./products";
 
 export const extractionJobStatusEnum = pgEnum("extraction_job_status", [
@@ -13,7 +13,7 @@ export const extractionJobs = pgTable("extraction_jobs", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .notNull()
-    .references(() => users.id),
+    .references(() => profiles.id),
   imagePath: text("image_path").notNull(),
   status: extractionJobStatusEnum("status").notNull().default("pending"),
   rawResponse: jsonb("raw_response"),

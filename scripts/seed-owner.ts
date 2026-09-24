@@ -1,6 +1,6 @@
 // Run manually: npm run db:seed-owner (never invoked by app boot or any route).
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { profiles } from "@/db/schema";
 
 async function main() {
   const email = process.env.OWNER_EMAIL;
@@ -9,9 +9,9 @@ async function main() {
   }
 
   await db
-    .insert(users)
+    .insert(profiles)
     .values({ email, isAllowed: true, name: "Owner" })
-    .onConflictDoNothing({ target: users.email });
+    .onConflictDoNothing({ target: profiles.email });
 
   console.log(`Seeded owner: ${email}`);
   process.exit(0);

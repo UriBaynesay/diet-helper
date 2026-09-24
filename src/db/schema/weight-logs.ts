@@ -1,5 +1,5 @@
 import { pgTable, uuid, date, numeric, timestamp, unique } from "drizzle-orm/pg-core";
-import { users } from "./users";
+import { profiles } from "./profiles";
 
 export const weightLogs = pgTable(
   "weight_logs",
@@ -7,7 +7,7 @@ export const weightLogs = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     userId: uuid("user_id")
       .notNull()
-      .references(() => users.id),
+      .references(() => profiles.id),
     weightKg: numeric("weight_kg").notNull(),
     loggedOn: date("logged_on", { mode: "date" }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

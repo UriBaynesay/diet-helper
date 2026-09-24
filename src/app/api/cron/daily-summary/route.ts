@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { profiles } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
 import { isValidCronRequest } from "@/lib/cron/guard";
 import { sendDailySummaryForUserDate } from "@/lib/notifications/send-daily-summary";
@@ -13,8 +13,8 @@ export async function POST(request: Request) {
 
   const eligibleUsers = await db
     .select()
-    .from(users)
-    .where(and(eq(users.isAllowed, true), eq(users.notificationsEnabled, true)));
+    .from(profiles)
+    .where(and(eq(profiles.isAllowed, true), eq(profiles.notificationsEnabled, true)));
 
   const results = [];
   for (const user of eligibleUsers) {

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { profiles } from "@/db/schema";
 
 type CacheEntry = {
   userId: string | null;
@@ -18,7 +18,7 @@ export async function lookupAuthorizedUser(emailRaw: string): Promise<CacheEntry
     return cached;
   }
 
-  const row = await db.query.users.findFirst({ where: eq(users.email, email) });
+  const row = await db.query.profiles.findFirst({ where: eq(profiles.email, email) });
   const entry: CacheEntry = {
     userId: row?.id ?? null,
     isAllowed: row?.isAllowed ?? false,

@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { users, weightLogs } from "@/db/schema";
+import { profiles, weightLogs } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
 import { requireUser, UnauthenticatedError } from "@/lib/auth/require-user";
 import { profileUpdateSchema } from "@/lib/profile/schema";
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     throw error;
   }
 
-  const profile = await db.query.users.findFirst({ where: eq(users.id, user.userId) });
+  const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.userId) });
   const latestWeight = await db.query.weightLogs.findFirst({
     where: eq(weightLogs.userId, user.userId),
     orderBy: desc(weightLogs.loggedOn),
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   const input = parsed.data;
 
   const [profile] = await db
-    .update(users)
+    .update(profiles)
     .set({
       sex: input.sex,
       birthDate: input.birthDate ? new Date(input.birthDate) : undefined,
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       notificationsEnabled: input.notificationsEnabled,
       updatedAt: new Date(),
     })
-    .where(eq(users.id, user.userId))
+    .where(eq(profiles.id, user.userId))
     .returning();
 
   let latestWeight = null;

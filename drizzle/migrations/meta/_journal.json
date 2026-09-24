@@ -85,6 +85,13 @@
       "when": 1788895227147,
       "tag": "0011_add_meals",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789200000000,
+      "tag": "0012_rename_users_to_profiles",
+      "breakpoints": true
     }
   ]
 }

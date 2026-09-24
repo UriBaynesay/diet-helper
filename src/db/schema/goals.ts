@@ -1,5 +1,5 @@
 import { pgTable, uuid, date, numeric, timestamp, pgEnum, index } from "drizzle-orm/pg-core";
-import { users } from "./users";
+import { profiles } from "./profiles";
 
 export const goalTypeEnum = pgEnum("goal_type", ["lose", "maintain", "gain"]);
 export const goalSourceEnum = pgEnum("goal_source", ["calculated", "manual"]);
@@ -12,7 +12,7 @@ export const goals = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     userId: uuid("user_id")
       .notNull()
-      .references(() => users.id),
+      .references(() => profiles.id),
     effectiveFrom: date("effective_from", { mode: "date" }).notNull(),
     goalType: goalTypeEnum("goal_type").notNull(),
     targetKcal: numeric("target_kcal").notNull(),
