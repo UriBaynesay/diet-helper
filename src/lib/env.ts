@@ -10,14 +10,8 @@ export const env = {
   get DATABASE_URL() {
     return required("DATABASE_URL");
   },
-  get APP_PASSWORD() {
-    return required("APP_PASSWORD");
-  },
   get SESSION_SECRET() {
     return required("SESSION_SECRET");
-  },
-  get OWNER_EMAIL() {
-    return required("OWNER_EMAIL");
   },
   get CRON_SECRET() {
     return required("CRON_SECRET");
