@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@/db";
-import { users, weightLogs } from "@/db/schema";
+import { profiles, weightLogs } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { findActiveGoal } from "@/lib/goals/active-goal";
 import { strings } from "@/lib/strings";
@@ -14,7 +14,7 @@ export default async function ProfilePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const profile = await db.query.users.findFirst({ where: eq(users.id, user.userId) });
+  const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.userId) });
   const latestWeight = await db.query.weightLogs.findFirst({
     where: eq(weightLogs.userId, user.userId),
     orderBy: desc(weightLogs.loggedOn),

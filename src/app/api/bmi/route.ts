@@ -1,6 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { users, weightLogs } from "@/db/schema";
+import { profiles, weightLogs } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
 import { requireUser, UnauthenticatedError } from "@/lib/auth/require-user";
 import { strings } from "@/lib/strings";
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   }
   const goalType = goalTypeParam as (typeof GOAL_TYPES)[number];
 
-  const profile = await db.query.users.findFirst({ where: eq(users.id, user.userId) });
+  const profile = await db.query.profiles.findFirst({ where: eq(profiles.id, user.userId) });
   if (!profile?.sex || !profile.birthDate || !profile.heightCm || !profile.activityLevel) {
     return apiError(
       "incomplete_profile",

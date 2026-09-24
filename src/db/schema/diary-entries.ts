@@ -1,6 +1,6 @@
 import { pgTable, uuid, date, numeric, timestamp, pgEnum, check, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { users } from "./users";
+import { profiles } from "./profiles";
 import { products } from "./products";
 import { meals } from "./meals";
 
@@ -12,7 +12,7 @@ export const diaryEntries = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     userId: uuid("user_id")
       .notNull()
-      .references(() => users.id),
+      .references(() => profiles.id),
     entryDate: date("entry_date", { mode: "date" }).notNull(),
     mealType: mealTypeEnum("meal_type").notNull(),
     productId: uuid("product_id").references(() => products.id),

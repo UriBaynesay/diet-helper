@@ -9,7 +9,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { users } from "./users";
+import { profiles } from "./profiles";
 
 export const productSourceEnum = pgEnum("product_source", ["manual", "image"]);
 
@@ -17,7 +17,7 @@ export const products = pgTable(
   "products",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    createdBy: uuid("created_by").references(() => users.id),
+    createdBy: uuid("created_by").references(() => profiles.id),
     name: text("name").notNull(),
     brand: text("brand"),
     barcode: text("barcode"),

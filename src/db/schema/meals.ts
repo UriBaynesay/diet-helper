@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
-import { users } from "./users";
+import { profiles } from "./profiles";
 
 // A meal is strictly a name + its ingredients (see meal-ingredients.ts) —
 // no servings, prep time, instructions, tags, or image. Nutrition is never
@@ -8,7 +8,7 @@ import { users } from "./users";
 // product-based diary entry uses.
 export const meals = pgTable("meals", {
   id: uuid("id").primaryKey().defaultRandom(),
-  createdBy: uuid("created_by").references(() => users.id),
+  createdBy: uuid("created_by").references(() => profiles.id),
   name: text("name").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

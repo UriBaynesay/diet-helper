@@ -24,7 +24,7 @@ export const activityLevelEnum = pgEnum("activity_level", [
   "very_active",
 ]);
 
-export const users = pgTable("users", {
+export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: citext("email").notNull().unique(),
   isAllowed: boolean("is_allowed").notNull().default(false),
