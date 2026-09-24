@@ -27,7 +27,11 @@ export const activityLevelEnum = pgEnum("activity_level", [
 export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: citext("email").notNull().unique(),
-  isAllowed: boolean("is_allowed").notNull().default(false),
+  // Nullable — leaves room for a future OAuth-only account (no password of
+  // its own). Every account created today gets one via /api/register; a
+  // null passwordHash means "can't log in with a password," which login
+  // treats the same as a wrong password (no distinct error message).
+  passwordHash: text("password_hash"),
   name: text("name"),
   sex: sexEnum("sex"),
   birthDate: date("birth_date", { mode: "date" }),

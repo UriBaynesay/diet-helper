@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { profiles } from "@/db/schema";
 import { apiData, apiError } from "@/lib/api-response";
@@ -11,10 +11,12 @@ export async function POST(request: Request) {
     return apiError("unauthorized", "Invalid or missing cron secret", 401);
   }
 
+  // Every registered profile is implicitly "allowed" now that anyone can
+  // register — notificationsEnabled is the only remaining opt-out.
   const eligibleUsers = await db
     .select()
     .from(profiles)
-    .where(and(eq(profiles.isAllowed, true), eq(profiles.notificationsEnabled, true)));
+    .where(eq(profiles.notificationsEnabled, true));
 
   const results = [];
   for (const user of eligibleUsers) {
