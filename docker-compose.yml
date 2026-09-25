@@ -5,7 +5,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      # Loopback-only: nginx (host-native, see infra/CLAUDE.md) is the sole
+      # public entrypoint. Docker's own iptables rules bypass ufw for
+      # published ports, so binding to 127.0.0.1 (not the shorthand
+      # "3000:3000", which means 0.0.0.0) is what actually keeps this
+      # unreachable from the internet, regardless of firewall rules.
+      - "127.0.0.1:3000:3000"
     environment:
       # Every var from .env.example except DATABASE_URL, which must point
       # at the "postgres" service hostname in here (not localhost:5432,
@@ -17,9 +22,7 @@ services:
       GMAIL_USER: ${GMAIL_USER}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
       APP_URL: ${APP_URL}
-      APP_PASSWORD: ${APP_PASSWORD}
       SESSION_SECRET: ${SESSION_SECRET}
-      OWNER_EMAIL: ${OWNER_EMAIL}
     depends_on:
       postgres:
         condition: service_healthy
@@ -28,7 +31,14 @@ services:
     image: postgres:18-alpine
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      # Loopback-only, for the same reason as "app" above — plus this one
+      # matters more: a database port reachable from the internet is a
+      # classic real-world breach vector on its own, independent of
+      # anything nginx or ufw does. The "app" service reaches this over
+      # Docker's internal network by service name ("postgres:5432"), which
+      # needs no published port at all — this port exists only so *you* can
+      # psql in from the host for debugging.
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_DB: diet_helper
       POSTGRES_USER: diet_helper

@@ -4,7 +4,7 @@ Personal Hebrew-RTL diet-tracking web app. Runs on the owner's PC; reachable on 
 
 ## Stack
 
-Next.js 16 (App Router) + TypeScript, PostgreSQL + Drizzle ORM, Tailwind CSS v4, a single shared password + signed session cookie for auth, Docker Compose (app + Postgres).
+Next.js 16 (App Router) + TypeScript, PostgreSQL + Drizzle ORM, Tailwind CSS v4, open email+password registration with a signed session cookie for auth, Docker Compose (app + Postgres).
 
 ## Local development
 
@@ -18,11 +18,7 @@ Next.js 16 (App Router) + TypeScript, PostgreSQL + Drizzle ORM, Tailwind CSS v4,
    npm install
    npm run db:migrate
    ```
-4. Seed the owner user (required before you can authenticate — see below):
-   ```bash
-   OWNER_EMAIL=you@example.com npm run db:seed-owner
-   ```
-5. Start the dev server:
+4. Start the dev server:
    ```bash
    npm run dev
    ```
@@ -31,16 +27,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Auth
 
-A single shared password protects the whole app — there's no per-user account system, matching the spec's single-owner model. `POST /api/login` (`src/app/api/login/route.ts`) checks the submitted password against `APP_PASSWORD`; on success it signs a session token (`src/lib/auth/session.ts`, `jose`/HS256, keyed by `SESSION_SECRET`) binding the session to `OWNER_EMAIL`, and sets it as an `httpOnly` cookie (30-day expiry). `src/proxy.ts` verifies that cookie's signature on every request — a hand-crafted cookie value is rejected (unlike the earlier dev-only bypass, which trusted an unsigned cookie/header outright). `POST /api/logout` clears the cookie.
+Open registration, per-account email+password — anyone can create an account via `POST /api/register` (`src/app/register/page.tsx`). Passwords are hashed with `bcryptjs` (chosen over native-binding alternatives to avoid compilation risk in the Alpine Docker build) and stored in `profiles.password_hash`. `POST /api/login` (`src/app/api/login/route.ts`) looks up the account by email and compares the password hash; on success it signs a session token (`src/lib/auth/session.ts`, `jose`/HS256, keyed by `SESSION_SECRET`) embedding `{ userId, email }`, set as an `httpOnly` cookie (30-day expiry). `src/proxy.ts` verifies that cookie's signature on every request — a validly-signed token is sufficient proof of a real registered account, no separate allowlist or DB lookup needed. `POST /api/logout` clears the cookie.
 
 ```bash
-curl -c cookies.txt -X POST http://localhost:3000/api/login --data-urlencode "password=$APP_PASSWORD" --data-urlencode "from=/"
+curl -c cookies.txt -X POST http://localhost:3000/api/login --data-urlencode "email=you@example.com" --data-urlencode "password=yourpassword"
 curl -b cookies.txt http://localhost:3000/api/whoami
 ```
 
-The verified session email must match a seeded, allowed user (`users.is_allowed = true`) or you'll get a 403 — see the seed step above. `OWNER_EMAIL` is both the seed script's target and the identity every session is issued for, since this app has exactly one real user.
-
-**Previously (removed):** this app used to authenticate via Cloudflare Access (JWT verification against Cloudflare's JWKS, reachable through a Cloudflare Tunnel) with a `NODE_ENV`-gated dev bypass for local testing. That whole path — `cloudflared` in `docker-compose.yml`, `src/lib/auth/jwks.ts`, the `CF_ACCESS_*` env vars, `/api/dev-login` — was removed in favor of the simpler password+session model above, since the app is only ever accessed from the owner's own devices (LAN or Tailscale) and never needs to be genuinely public.
+Login and registration deliberately return the same generic "invalid credentials" error whether the email doesn't exist or the password is wrong, to avoid email enumeration. `profiles.password_hash` is nullable — reserved for a future phase where Google OAuth is an alternative to password login (not yet built).
 
 ## Database / migrations
 
@@ -162,7 +156,7 @@ All BMI/BMR/TDEE/macro-split math is in `src/lib/profile/calculations.ts` as pur
 |---|---|---|
 | POST | `/api/cron/daily-summary` | Sends each eligible user their daily progress email |
 
-Guarded the same way as `/api/cron/ping` — `X-Cron-Secret` (`src/lib/cron/guard.ts`), not the session cookie. Iterates every user with `is_allowed = true AND notifications_enabled = true` (a user failing either check is excluded from the query entirely, not merely skipped).
+Guarded the same way as `/api/cron/ping` — `X-Cron-Secret` (`src/lib/cron/guard.ts`), not the session cookie. Iterates every profile with `notifications_enabled = true` (a profile with notifications off is excluded from the query entirely, not merely skipped).
 
 For each eligible user, "today" is resolved in *that user's* `timezone` via `Intl.DateTimeFormat` (`src/lib/notifications/timezone.ts`) — never the container's UTC clock — then the route attempts today's summary and, separately, yesterday's (**catch-up**, in case the PC was asleep at the scheduled time; never further back than one day). Each attempt is idempotent: `send-daily-summary.ts` checks `notification_logs` for an existing `status = 'sent'` row for that user/date first, and skips cleanly (no email, no duplicate log) if already sent, if the day has zero diary entries, or if there's no active goal for that date.
 
@@ -175,10 +169,8 @@ Verified via curl + live email delivery: calling the endpoint twice for the same
 ## Environment variables
 
 See `.env.example` for the full list. Notes:
-- `DATABASE_URL` in `.env` is for host-side tooling (`npm run dev`, `db:migrate`, seed script). Inside `docker-compose.yml`, the `app` service overrides this to point at the `postgres` service hostname instead of `localhost`.
-- `APP_PASSWORD` is the app's one login password (see Auth above) — required at runtime by `src/lib/env.ts` as soon as any request hits `proxy.ts`.
+- `DATABASE_URL` in `.env` is for host-side tooling (`npm run dev`, `db:migrate`). Inside `docker-compose.yml`, the `app` service overrides this to point at the `postgres` service hostname instead of `localhost`.
 - `SESSION_SECRET` signs session cookies (`jose`/HS256) — generate a long random value, e.g. `openssl rand -base64 32`. Changing it invalidates every existing session (forces re-login everywhere).
-- `OWNER_EMAIL` is read both by `scripts/seed-owner.ts` (to seed the one allowed user row) and by `POST /api/login` (the identity every session is issued for).
 - `CRON_SECRET` guards `/api/cron/*` routes — these are excluded from the auth proxy's matcher entirely (an OS scheduler calls them locally with no session cookie) and are protected by this shared secret instead (`src/lib/cron/guard.ts`).
 - `GMAIL_USER`/`GMAIL_APP_PASSWORD` (a Gmail App Password, not the account password — requires 2-Step Verification) and `APP_URL` (used for the "open the app" link in the daily summary email) are required at runtime by `src/lib/env.ts` once the notifications cron route is hit.
 - `ANTHROPIC_API_KEY` is required at runtime by `src/lib/env.ts` once the image-extraction route (`/api/products/extract`) or the recipe-parse route (`/api/recipes/parse`) is hit.
