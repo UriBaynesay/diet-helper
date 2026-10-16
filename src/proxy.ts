@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifySessionToken } from "@/lib/auth/session";
 import { SESSION_COOKIE, USER_ID_HEADER, USER_EMAIL_HEADER } from "@/lib/auth/constants";
+import { getRequestOrigin } from "@/lib/auth/origin";
 
 function isApiRequest(request: NextRequest): boolean {
   return request.nextUrl.pathname.startsWith("/api/");
@@ -11,10 +12,10 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await verifySessionToken(token) : null;
 
-  // Build redirects from the Host header the client actually used, not
-  // request.url/nextUrl — Next can normalize those to localhost even when
-  // the browser reached the server via a LAN IP or Tailscale address.
-  const origin = `${request.nextUrl.protocol}//${request.headers.get("host") ?? request.nextUrl.host}`;
+  // Build redirects from the Host header and X-Forwarded-Proto the client
+  // actually used, not request.url/nextUrl — Next can normalize the host to
+  // localhost, and behind nginx the scheme always reads as plain http.
+  const origin = getRequestOrigin(request);
 
   if (!session) {
     if (isApiRequest(request)) {

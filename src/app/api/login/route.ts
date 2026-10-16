@@ -6,11 +6,12 @@ import { profiles } from "@/db/schema";
 import { createSessionToken } from "@/lib/auth/session";
 import { SESSION_COOKIE } from "@/lib/auth/constants";
 import { loginSchema } from "@/lib/auth/schema";
+import { getRequestOrigin } from "@/lib/auth/origin";
 
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 function loginRedirect(request: Request, params: { error?: string; from?: string }): NextResponse {
-  const loginUrl = new URL("/login", request.url);
+  const loginUrl = new URL("/login", getRequestOrigin(request));
   if (params.error) loginUrl.searchParams.set("error", params.error);
   if (params.from) loginUrl.searchParams.set("from", params.from);
   return NextResponse.redirect(loginUrl, { status: 303 });
@@ -47,14 +48,13 @@ export async function POST(request: Request) {
     return loginRedirect(request, { error: "invalid_credentials", from: fromValue });
   }
 
-  const host = request.headers.get("host") ?? new URL(request.url).host;
-  const protocol = new URL(request.url).protocol;
-  const redirectTo = new URL(fromValue || "/", `${protocol}//${host}`);
+  const redirectTo = new URL(fromValue || "/", getRequestOrigin(request));
 
   const token = await createSessionToken(row.id, email.toLowerCase());
   const response = NextResponse.redirect(redirectTo, { status: 303 });
   response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,

@@ -5,12 +5,13 @@ import { profiles } from "@/db/schema";
 import { createSessionToken } from "@/lib/auth/session";
 import { SESSION_COOKIE } from "@/lib/auth/constants";
 import { registerSchema } from "@/lib/auth/schema";
+import { getRequestOrigin } from "@/lib/auth/origin";
 
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const BCRYPT_COST_FACTOR = 10;
 
 function registerRedirect(request: Request, params: { error?: string; from?: string }): NextResponse {
-  const registerUrl = new URL("/register", request.url);
+  const registerUrl = new URL("/register", getRequestOrigin(request));
   if (params.error) registerUrl.searchParams.set("error", params.error);
   if (params.from) registerUrl.searchParams.set("from", params.from);
   return NextResponse.redirect(registerUrl, { status: 303 });
@@ -46,14 +47,13 @@ export async function POST(request: Request) {
     return registerRedirect(request, { error: "email_taken", from: fromValue });
   }
 
-  const host = request.headers.get("host") ?? new URL(request.url).host;
-  const protocol = new URL(request.url).protocol;
-  const redirectTo = new URL(fromValue || "/", `${protocol}//${host}`);
+  const redirectTo = new URL(fromValue || "/", getRequestOrigin(request));
 
   const token = await createSessionToken(row.id, email);
   const response = NextResponse.redirect(redirectTo, { status: 303 });
   response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
