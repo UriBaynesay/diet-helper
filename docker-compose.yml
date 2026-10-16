@@ -5,13 +5,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      # TEMPORARY: publicly bound (0.0.0.0) so the app is reachable via the
-      # raw VPS IP before nginx exists. Once nginx (host-native, see
-      # infra/CLAUDE.md) is the sole public entrypoint, revert this to
-      # "127.0.0.1:3000:3000" and close 3000/tcp in ufw again — Docker's
-      # own iptables rules bypass ufw for published ports, so the loopback
-      # bind (not ufw alone) is what actually protects this once reverted.
-      - "3000:3000"
+      # Loopback-only: nginx (host-native, see infra/CLAUDE.md) is the sole
+      # public entrypoint. Docker's own iptables rules bypass ufw for
+      # published ports, so binding to 127.0.0.1 (not the shorthand
+      # "3000:3000", which means 0.0.0.0) is what actually keeps this
+      # unreachable from the internet, regardless of firewall rules.
+      - "127.0.0.1:3000:3000"
     environment:
       # Every var from .env.example except DATABASE_URL, which must point
       # at the "postgres" service hostname in here (not localhost:5432,
