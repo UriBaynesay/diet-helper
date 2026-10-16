@@ -1,6 +1,6 @@
 # diet-helper
 
-Personal Hebrew-RTL diet-tracking web app. Runs on the owner's PC; reachable on the local network directly, and remotely via [Tailscale](https://tailscale.com) (a private VPN between the owner's own devices — no public exposure, no domain required). See `diet-helper-functional-spec.md` for the full product/technical spec.
+Hebrew-RTL diet-tracking web app with open email+password registration. Deployed on a self-managed VPS at `https://diet.v1vpa.duckdns.org` behind nginx with Let's Encrypt (server setup and deploy tooling live in the separate `infra` repo); runs locally in Docker for development. See `diet-helper-functional-spec.md` for the full product/technical spec.
 
 ## Stack
 
@@ -181,11 +181,11 @@ See `.env.example` for the full list. Notes:
 docker compose up
 ```
 
-Starts `postgres` and `app` (migrates on boot, then serves on port 3000, published to the host). No tunnel service — reach the app via the host's LAN IP or Tailscale address directly.
+Starts `postgres` and `app` (serves on port 3000, published to `127.0.0.1` only). The container does **not** migrate on boot: the production image is a pruned Next.js standalone build with no `tsx`/`drizzle-kit`, so run `npm run db:migrate` from a dev machine with `DATABASE_URL` pointing at the database (on the VPS, through an SSH tunnel; see `infra/docs/first-app-live.md`). In production, `infra/deploy.sh diet-helper` runs this stack behind nginx.
 
 ## Mobile / remote access
 
-The app has no public exposure by design — it's reachable only from devices on the same local network, or via [Tailscale](https://tailscale.com) (free, private VPN between your own devices; install it on the host PC and on your phone, sign into the same account on both, and the phone can reach the PC's Tailscale IP — e.g. `http://100.x.x.x:3000` — from anywhere with an internet connection, without exposing anything publicly).
+In production the app is public at `https://diet.v1vpa.duckdns.org`, so any phone can use it directly. For a local copy of the stack (development), it is reachable only from devices on the same local network, or via [Tailscale](https://tailscale.com) (free, private VPN between your own devices; install it on the host PC and on your phone, sign into the same account on both, and the phone can reach the PC's Tailscale IP — e.g. `http://100.x.x.x:3000` — from anywhere with an internet connection, without exposing anything publicly).
 
 `npm run dev` does not work reliably on iOS Safari/Chrome when accessed over a non-`localhost` address (buttons/dialogs silently fail to respond — confirmed dev-mode-specific, likely Turbopack's HMR websocket; see the `frontend-ui-ux` skill). For real phone use, run a production build instead:
 
