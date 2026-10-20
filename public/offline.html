@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fdf9f6" />
+    <title>אין חיבור · יומן תזונה</title>
+    <!-- Self-contained on purpose: this page is shown with no network, so it cannot depend on
+         the app's scripts or stylesheets (those are not cached). Colours match the app's tokens. -->
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: #fdf9f6;
+        color: #271d17;
+        font-family: system-ui, -apple-system, "Segoe UI", Heebo, Arial, sans-serif;
+        text-align: center;
+      }
+      main { max-width: 360px; }
+      .mark {
+        width: 72px; height: 72px; margin: 0 auto 24px;
+        border-radius: 22px; background: #de4e4b;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .mark span { width: 34px; height: 34px; border: 5px solid #fff; border-radius: 50%; }
+      h1 { margin: 0 0 12px; font-size: 26px; line-height: 1.2; }
+      p { margin: 0 0 28px; font-size: 18px; line-height: 1.5; color: #6b5d55; }
+      button {
+        min-height: 56px; padding: 0 32px; border: 0; border-radius: 100px;
+        background: #de4e4b; color: #fff; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer;
+      }
+      button:focus-visible { outline: 3px solid #271d17; outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true"><span></span></div>
+      <h1>אין חיבור לאינטרנט</h1>
+      <p>היומן צריך חיבור כדי להציג את הנתונים שלך. אפשר לחזור לכאן כשיש רשת.</p>
+      <button type="button" onclick="location.reload()">לנסות שוב</button>
+    </main>
+  </body>
+</html>

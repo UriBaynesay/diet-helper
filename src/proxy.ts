@@ -38,8 +38,12 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
+// Paths that skip the login check. The last group is the installable-app files: the
+// manifest, the service worker, the icons and the offline page must be readable by a
+// signed-out browser, or "Add to Home Screen" silently breaks (they would redirect to
+// /login). None of them contains personal data.
 export const config = {
   matcher: [
-    "/((?!api/cron|api/health|api/login|api/register|login|register|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api/cron|api/health|api/login|api/register|login|register|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|icons/|apple-icon).*)",
   ],
 };

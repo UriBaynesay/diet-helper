@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Heebo, Sora, Inter } from "next/font/google";
 import { strings } from "@/lib/strings";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -27,6 +28,13 @@ const numericFont = Inter({
 
 export const metadata: Metadata = {
   title: strings.common.appName,
+  // iOS home-screen install: open without Safari's chrome, titled like the app.
+  appleWebApp: { capable: true, title: strings.common.appName, statusBarStyle: "default" },
+};
+
+// The browser/status-bar colour; the app's own --background token.
+export const viewport: Viewport = {
+  themeColor: "#fdf9f6",
 };
 
 export default function RootLayout({
@@ -43,6 +51,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

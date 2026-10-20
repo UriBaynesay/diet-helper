@@ -188,6 +188,27 @@ easy to regress on a new screen:
   color utilities (`text-muted-foreground` etc. still point at stock
   shadcn grays, not this palette).
 
+## Installable app (PWA)
+
+Installable from the browser ("Add to Home Screen"): `src/app/manifest.ts` (Hebrew, RTL,
+standalone, colours = the `--background` token), icons in `public/icons` + `src/app/apple-icon.png`
+(rendered from `public/icons/icon.svg`), `appleWebApp` + `viewport.themeColor` in `layout.tsx`.
+
+**Offline = a friendly page, nothing more.** `public/sw.js` is ~40 lines and caches only
+`/offline.html` and the icons; for page navigations it goes network-first and falls back to the
+offline page. It never touches `/api/*`, POSTs, or any signed-in page: every page here is
+personal data rendered by the server, so none may ever sit in a cache. `offline.html` is
+self-contained (inline CSS, no scripts of the app) because the app's own JS/CSS chunks are not
+cached and a Next page would render broken offline. Registered in production only
+(`ServiceWorkerRegister`). Bump `VERSION` in `sw.js` when it or the precached files change.
+
+**Gotcha that breaks installs silently:** `src/proxy.ts` redirects every signed-out request to
+`/login`, including the manifest, `sw.js`, the icons and the offline page unless they are
+excluded in `config.matcher`. They are (prefix matches), and `src/proxy-matcher.test.ts` pins both
+that these paths bypass the login and that every real page and API route still needs it.
+Serwist (the usual Next PWA library) was not used: it needs webpack and this project builds with
+Turbopack.
+
 ## Guardrails specific to this app
 
 - Don't reintroduce Docker (or any other infra) here speculatively — wait
